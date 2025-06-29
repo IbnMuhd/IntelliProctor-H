@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Proctoring Alerts{% endblock %}
+{% block content %}
+<h2>Proctoring Alerts</h2>
+<a href="{{ url_for('admin') }}" class="btn btn-secondary" style="margin-bottom: 16px;">Back to Admin Dashboard</a>
+<p>Note: Alerts are only shown on the dedicated alerts page, not on the admin dashboard itself.</p>
+<button id="deleteAllAlerts" class="btn btn-danger" style="margin-bottom: 16px;">Delete All Alerts</button>
+<table id="alertsTable">
+    <thead>
+        <tr>
+            <th>Time</th>
+            <th>User</th>
+            <th>Alert Type</th>
+            <th>Screenshot</th>
+            <th>Delete</th>
+        </tr>
+    </thead>
+    <tbody id="alertsBody">
+        {% for alert in alerts %}
+        <tr data-id="{{ alert.id }}">
+            <td>{{ alert.timestamp }}</td>
+            <td>{{ alert.user }}</td>
+            <td>{{ alert.alert_type.replace('_', ' ').title() }}</td>
+            <td>
+                {% if alert.image_path %}
+                <a href="{{ url_for('static', filename=alert.image_path) }}" target="_blank">
+                    <img src="{{ url_for('static', filename=alert.image_path) }}" alt="Screenshot" style="width:60px; border-radius:4px; border:1px solid #ccc;">
+                </a>
+                {% else %}-{% endif %}
+            </td>
+            <td><button class="delete-alert" data-id="{{ alert.id }}">Delete</button></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.delete-alert').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const alertId = this.getAttribute('data-id');
+            if(confirm('Delete this alert?')) {
+                fetch(`/delete_alert/${alertId}`, {method: 'POST'})
+                  .then(res => res.json())
+                  .then(data => {
+                    if(data.status === 'success') {
+                        this.closest('tr').remove();
+                    }
+                  });
+            }
+        });
+    });
+    document.getElementById('deleteAllAlerts').addEventListener('click', function() {
+        if(confirm('Delete ALL alerts? This cannot be undone.')) {
+            fetch('/delete_all_alerts', {method: 'POST'})
+              .then(res => res.json())
+              .then(data => {
+                if(data.status === 'success') {
+                    document.querySelectorAll('#alertsBody tr').forEach(row => row.remove());
+                }
+              });
+        }
+    });
+});
+</script>
+{% endblock %}

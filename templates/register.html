@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Register</title>
+    <style>
+        .register-container { max-width: 400px; margin: 40px auto; text-align: center; }
+        video, canvas { border: 2px solid #333; border-radius: 8px; width: 320px; }
+        .register-container form { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+        .register-container button { padding: 10px; font-size: 1rem; border-radius: 6px; background: #4f8cff; color: #fff; border: none; }
+        .confirmation { color: #388e3c; font-weight: bold; margin-top: 18px; display: none; }
+    </style>
+</head>
+<body>
+<div class="register-container">
+    <h2>Register</h2>
+    {% if error %}<p style="color:red">{{ error }}</p>{% endif %}
+    <div style="display: flex; justify-content: center; align-items: center;">
+        <img src="/static/images/register.png" alt="Register Illustration" style="max-width: 100%; max-height: 320px; border-radius: 16px; margin-bottom: 24px;" />
+    </div>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <form id="registerForm" method="post">
+        <input name="username" placeholder="Username" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <select name="role" id="roleSelect">
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+        </select>
+        <input type="hidden" name="face_image" id="face_image">
+        <input type="hidden" name="admin_code" id="admin_code">
+        <button type="submit">Capture & Register</button>
+    </form>
+    <div class="confirmation" id="confirmationMsg">Face captured! Registration submitted.</div>
+</div>
+<script>
+    // Prompt for camera access and show video
+    const video = document.getElementById('video');
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => { alert('Camera access denied or not available.'); });
+
+    // On form submit, capture frame and send as base64
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const canvas = document.getElementById('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        document.getElementById('face_image').value = canvas.toDataURL('image/jpeg');
+        this.submit();
+        setTimeout(function() {
+            video.srcObject.getTracks().forEach(track => track.stop());
+            document.getElementById('confirmationMsg').style.display = 'block';
+        }, 200);
+    });
+
+    // Optionally allow admin registration with a secret code
+    document.getElementById('roleSelect').addEventListener('change', function() {
+        if (this.value === 'admin') {
+            let code = prompt('Enter admin registration code:');
+            document.getElementById('admin_code').value = code || '';
+        } else {
+            document.getElementById('admin_code').value = '';
+        }
+    });
+</script>
+</body>
+</html>

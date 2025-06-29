@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Exam - Proctoring{% endblock %}
+{% block content %}
+<h2>Exam</h2>
+<div style="background: #f8f9fa; border-radius: 10px; padding: 24px; margin-bottom: 28px; max-width: 700px; margin-left: auto; margin-right: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.07);">
+    <h3 style="color: #4f8cff; margin-bottom: 10px;">Exam Instructions</h3>
+    <ul style="font-size: 1.05em; color: #222; padding-left: 20px;">
+        <li>Your exam session is being monitored using AI proctoring technology.</li>
+        <li>Your camera, microphone, and screen activity are being observed throughout the exam.</li>
+        <li>Remain in front of your camera and avoid looking away from the screen.</li>
+        <li>Do not leave or minimize the exam window; doing so may trigger alerts.</li>
+        <li>Any suspicious behavior (such as multiple faces, background noise, or use of a phone) will be flagged and reported to the administrator.</li>
+        <li>If you experience technical issues, contact support immediately.</li>
+    </ul>
+</div>
+<div style="text-align:center; margin-bottom:32px;">
+    <a href="{{ url_for('exam_questions') }}" class="btn btn-login" style="font-size:1.2em; padding:16px 36px;">Continue to Questions</a>
+</div>
+<div id="proctorCamera" style="display:block; position:fixed; bottom:24px; right:24px; z-index:1000; background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.15); padding:8px;">
+    <img id="proctorFeed" src="{{ url_for('video_feed') }}" alt="Proctoring Camera" style="width:180px; border-radius:8px; border:2px solid #4f8cff;">
+    <div style="font-size:0.9em; color:#555; margin-top:4px;">Proctoring Active</div>
+</div>
+<div id="proctorModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(44,62,80,0.75); z-index:2000; align-items:center; justify-content:center;">
+    <div style="background:#fff; border-radius:12px; padding:32px 28px; max-width:400px; margin:auto; text-align:center; box-shadow:0 4px 24px rgba(0,0,0,0.18);">
+        <h3 style="color:#4f8cff;">Proctoring System Active</h3>
+        <p>Your exam session is now being monitored by the AI proctoring system. Your camera, microphone, and screen activity will be observed for the duration of the exam. Please ensure you are alone, avoid suspicious behavior, and do not leave the exam window.</p>
+        <button id="closeModal" style="margin-top:18px;">I Understand</button>
+    </div>
+</div>
+<script>
+    // Show proctoring modal on load
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('proctorModal').style.display = 'flex';
+    });
+    const closeModalBtn = document.getElementById('closeModal');
+    if(closeModalBtn) {
+        closeModalBtn.addEventListener('click', function() {
+            document.getElementById('proctorModal').style.display = 'none';
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Exam Questions - Proctoring{% endblock %}
+{% block content %}
+<h2>Exam Questions</h2>
+<div id="timer" style="font-size:1.2em; color:#d9534f; margin-bottom:10px;"></div>
+<div id="progress" style="font-size:1em; color:#333; margin-bottom:10px;"></div>
+<div id="warning" style="display:none; color:#b85c00; font-weight:bold; margin-bottom:10px;">Less than 1 minute left! Please finish and submit your exam.</div>
+{% if submitted %}
+    <div class="success">
+        <h3>Thank you for submitting your exam!</h3>
+        <p>Your score: <strong>{{ score }}/{{ total }}</strong></p>
+    </div>
+{% else %}
+    <form id="examForm" method="post">
+        <div id="questionsSection">
+        {% for q in questions %}
+        <div style="margin-bottom:18px; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); padding: 18px 16px;">
+            <p><strong>Q{{ loop.index }}. {{ q.question }}</strong></p>
+            {% for opt in [q.option1, q.option2, q.option3, q.option4] %}
+            <label style="display:block; margin-left:16px;">
+                <input type="radio" name="q{{ loop.index0 }}" value="{{ opt }}" required> {{ opt }}
+            </label>
+            {% endfor %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-login">Submit</button>
+        </div>
+    </form>
+    <script>
+    let duration = {{ remaining|default(duration|default(30)*60) }}; // seconds left for this student
+    let timerDisplay = document.getElementById('timer');
+    let form = document.getElementById('examForm');
+    let warningShown = false;
+    let interval = setInterval(function() {
+        let min = Math.floor(duration / 60);
+        let sec = duration % 60;
+        timerDisplay.textContent = `Time Left: ${min}:${sec.toString().padStart(2, '0')}`;
+        if (duration === 60 && !warningShown) {
+            document.getElementById('warning').style.display = 'block';
+            warningShown = true;
+            alert('Less than 1 minute left! Please finish and submit your exam.');
+        }
+        if (duration <= 0) {
+            clearInterval(interval);
+            form.submit();
+        }
+        duration--;
+    }, 1000);
+    // Progress display
+    function updateProgress() {
+        let total = document.querySelectorAll('#questionsSection input[type=radio][value]').length / 4;
+        let answered = 0;
+        for (let i = 0; i < total; i++) {
+            let name = `q${i}`;
+            if (document.querySelector(`input[name='${name}']:checked`)) answered++;
+        }
+        document.getElementById('progress').textContent = `Answered: ${answered} / ${total}`;
+    }
+    document.querySelectorAll('#questionsSection input[type=radio]').forEach(el => {
+        el.addEventListener('change', updateProgress);
+    });
+    updateProgress();
+    </script>
+{% endif %}
+<div id="proctorCamera" style="display:block; position:fixed; bottom:24px; right:24px; z-index:1000; background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.15); padding:8px;">
+    <img id="proctorFeed" src="{{ url_for('video_feed') }}" alt="Proctoring Camera" style="width:180px; border-radius:8px; border:2px solid #4f8cff;">
+    <div style="font-size:0.9em; color:#555; margin-top:4px;">Proctoring Active</div>
+</div>
+{% endblock %}

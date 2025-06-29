@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ExamGuard - Home</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: #fff;
+            color: #333;
+        }
+
+        /* Navigation Bar */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            background-color: #fff;
+            border-bottom: 1px solid #eee;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+        }
+
+        .logo {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .logo::before {
+            content: "♦";
+            margin-right: 6px;
+            color: #000;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .nav-links .btn {
+            padding: 10px 18px;
+            border-radius: 6px;
+            font-weight: bold;
+            border: none;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-login {
+            background-color: #1976f2;
+            color: white;
+        }
+
+        .btn-register {
+            background-color: #f1f1f1;
+            color: black;
+        }
+
+        .btn-login:hover {
+            background-color: #155ec1;
+        }
+
+        .btn-register:hover {
+            background-color: #ddd;
+        }
+
+        /* Hero Section */
+        .hero {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 60px 20px;
+            background-color: #f9f9f9;
+        }
+
+        .hero img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .hero h1 {
+            font-size: 2.8rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            color: #555;
+            margin-bottom: 25px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 15px;
+        }
+
+        .hero-buttons a {
+            padding: 12px 20px;
+            font-size: 1rem;
+            border-radius: 6px;
+            font-weight: bold;
+            text-decoration: none;
+            transition: 0.3s ease;
+        }
+
+        .hero-buttons .btn-login {
+            background-color: #1976f2;
+            color: white;
+        }
+
+        .hero-buttons .btn-register {
+            background-color: #f1f1f1;
+            color: black;
+        }
+
+        .hero-buttons .btn-login:hover {
+            background-color: #155ec1;
+        }
+
+        .hero-buttons .btn-register:hover {
+            background-color: #ddd;
+        }
+
+        /* About and Contact Sections */
+        section {
+            padding: 48px 16px;
+            border-radius: 10px;
+            margin: 32px auto;
+            max-width: 700px;
+        }
+
+        #about {
+            background: #f7faff;
+        }
+
+        #contact {
+            background: #fffbe7;
+        }
+
+        h2 {
+            margin-bottom: 12px;
+        }
+
+        ul {
+            margin: 18px 0 0 18px;
+        }
+
+        form {
+            margin-top: 18px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+
+        /* Footer */
+        .footer {
+            background-color: #f1f1f1;
+            padding: 20px 0;
+            text-align: center;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* Media Queries */
+        @media (max-width: 768px) {
+            nav {
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 20px;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <div class="logo">ExamGuard</div>
+        <div class="nav-links">
+            <a href="#">Home</a>
+            <a href="#">About</a>
+            <a href="#">Contact</a>
+            <a href="{{ url_for('login') }}" class="btn btn-login">Login</a>
+            <a href="{{ url_for('register') }}" class="btn btn-register">Register</a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="container">
+      <section class="hero">
+          <img src="{{ url_for('static', filename='images/home_banner_image.avif') }}" alt="Student sitting with laptop">
+          <h1>Welcome to ExamGuard</h1>
+          <p>Your trusted partner for secure and reliable online assessments.</p>
+          <div class="hero-buttons">
+              <a href="{{ url_for('login') }}" class="btn-login">Login</a>
+              <a href="{{ url_for('register') }}" class="btn-register">Register</a>
+          </div>
+      </section>
+    </div>
+
+    <!-- About Section -->
+    <div class="container">
+      <section id="about">
+        <h2 style="margin-bottom: 12px;">About ExamGuard</h2>
+        <p>
+          ExamGuard is an advanced AI-powered proctoring platform designed to ensure exam integrity for online assessments.<br>
+          It features real-time face verification, behavior monitoring, audio and screen activity detection, and instant alerts for suspicious actions.<br>
+          The system provides dedicated dashboards for both students and administrators, making online exams secure and user-friendly.
+        </p>
+        <ul style="margin: 18px 0 0 18px;">
+          <li>Face registration and verification using AI</li>
+          <li>Real-time proctoring (multiple faces, head movement, audio, screen activity)</li>
+          <li>Admin and student dashboards</li>
+          <li>Automated grading and persistent alert history</li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- Contact Section -->
+    <div class="container">
+      <section id="contact">
+        <h2 style="margin-bottom: 12px;">Contact Us</h2>
+        <p>
+          For support or inquiries, please contact us at:<br>
+          <strong>Email:</strong> support@examguard.com<br>
+          <strong>Phone:</strong> +2348162656453 / +2348028657294
+        </p>
+        <form method="post" action="/contact" style="margin-top: 18px;">
+          <input type="text" name="name" placeholder="Your Name" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
+          <input type="email" name="email" placeholder="Your Email" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
+          <textarea name="message" placeholder="Your Message" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;"></textarea>
+          <button type="submit" class="btn btn-login">Send Message</button>
+        </form>
+      </section>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="container" style="text-align:center; padding: 18px 0; color: #888; font-size: 1rem;">
+        &copy; {{ current_year or 2025 }} ExamGuard. All rights reserved.
+      </div>
+    </footer>
+
+</body>
+</html>

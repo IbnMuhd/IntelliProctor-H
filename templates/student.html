@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Student - Proctoring{% endblock %}
+{% block content %}
+<h2>Exam</h2>
+
+<div style="background: #f8f9fa; border-radius: 10px; padding: 24px; margin-bottom: 28px; max-width: 700px; margin-left: auto; margin-right: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.07);">
+    <h3 style="color: #4f8cff; margin-bottom: 10px;">Please Read Before Starting Your Exam</h3>
+    <ul style="font-size: 1.05em; color: #222; padding-left: 20px;">
+        <li>Your exam session will be monitored using AI proctoring technology.</li>
+        <li>Your camera, microphone, and screen activity will be observed throughout the exam.</li>
+        <li>Make sure you are alone in a quiet, well-lit room.</li>
+        <li>Do not use unauthorized materials, devices, or communicate with others during the exam.</li>
+        <li>Remain in front of your camera and avoid looking away from the screen.</li>
+        <li>Do not leave or minimize the exam window; doing so may trigger alerts.</li>
+        <li>Any suspicious behavior (such as multiple faces, background noise, or use of a phone) will be flagged and reported to the administrator.</li>
+        <li>If you experience technical issues, contact support immediately.</li>
+        <li>By starting the exam, you agree to abide by these rules and understand that violations may result in disqualification.</li>
+    </ul>
+</div>
+<form id="examStartForm">
+    <button id="startExam" type="button" class="btn start-exam-btn">Start Exam</button>
+    <span id="startExamLoading" style="display:none; margin-left:10px; color:#4f8cff; font-weight:bold;">Starting...</span>
+    <span id="startExamError" style="display:none; margin-left:10px; color:#d9534f; font-weight:bold;"></span>
+</form>
+<script>
+    const startExamBtn = document.getElementById('startExam');
+    const startExamLoading = document.getElementById('startExamLoading');
+    const startExamError = document.getElementById('startExamError');
+    if(startExamBtn) {
+        startExamBtn.addEventListener('click', function() {
+            startExamError.style.display = 'none';
+            startExamLoading.style.display = 'inline';
+            startExamBtn.disabled = true;
+            fetch('/start_exam').then(res => {
+                if (!res.ok) throw new Error('Network error');
+                return res.json();
+            }).then(data => {
+                startExamLoading.style.display = 'none';
+                if(data.status === 'success' && data.redirect) {
+                    window.location.href = data.redirect;
+                } else {
+                    startExamError.textContent = data.message || 'Failed to start proctoring.';
+                    startExamError.style.display = 'inline';
+                    startExamBtn.disabled = false;
+                }
+            }).catch(err => {
+                startExamLoading.style.display = 'none';
+                startExamError.textContent = 'Could not start exam. Please check your connection or try again.';
+                startExamError.style.display = 'inline';
+                startExamBtn.disabled = false;
+            });
+        });
+    }
+</script>
+{% endblock %}

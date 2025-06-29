@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login</title>
+    <style>
+        .login-container {
+            max-width: 500px;
+            margin: 40px auto;
+            text-align: center;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+        .login-media img {
+            width: 10%;
+            max-height: 50px;
+            border-radius: 16px;
+            object-fit: cover;
+            margin-bottom: 16px;
+        }
+        video, canvas {
+            border: 2px solid #333;
+            border-radius: 8px;
+            width: 320px;
+            margin-bottom: 16px;
+        }
+        .login-container form {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 20px;
+        }
+        .login-container input {
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        .login-container button {
+            padding: 10px;
+            font-size: 1rem;
+            border-radius: 6px;
+            background: #4f8cff;
+            color: #fff;
+            font-weight: bold;
+            border: none;
+        }
+        .error {
+            color: #f44336;
+            font-weight: bold;
+            margin-top: 18px;
+        }
+    </style>
+</head>
+<body>
+<div class="login-container">
+    <h2>Login to Your Account</h2>
+    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+
+    <!-- 🔄 Replaced video preview illustration with an image -->
+    <div class="login-media">
+        <img src="static/images/webcam image.jpg" alt="video_feed" />
+    </div>
+
+    <!-- 📷 Webcam video preview -->
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <form id="loginForm" method="post">
+        <input name="username" placeholder="Username" required>
+        <input name="password" type="password" placeholder="Password" required>
+        <input type="hidden" name="face_image" id="face_image">
+        <button type="submit">Login (with Face)</button>
+    </form>
+
+    <div style="margin-top:18px;">
+        <a href="{{ url_for('register') }}">Don't have an account? Register here</a>
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const loginForm = document.getElementById('loginForm');
+    const faceImageInput = document.getElementById('face_image');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            video.srcObject = stream;
+        })
+        .catch(err => {
+            alert('Camera access denied or not available.');
+        });
+
+    loginForm.addEventListener('submit', function (e) {
+        e.preventDefault();
+
+        if (!video.srcObject || video.readyState !== 4) {
+            alert('Camera not ready. Please allow camera access and try again.');
+            return;
+        }
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        faceImageInput.value = canvas.toDataURL('image/jpeg');
+
+        const btn = this.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        btn.textContent = 'Face verified! Logging in...';
+
+        setTimeout(() => {
+            loginForm.submit();
+
+            if (video.srcObject) {
+                video.srcObject.getTracks().forEach(track => track.stop());
+            }
+        }, 800);
+    });
+</script>
+</body>
+</html>

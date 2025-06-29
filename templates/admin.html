@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Admin - Proctoring{% endblock %}
+{% block content %}
+<h2>Set Exam Questions</h2>
+<form method="post">
+    <input type="text" name="question" placeholder="Question" required>
+    <input type="text" name="option1" placeholder="Option 1" required>
+    <input type="text" name="option2" placeholder="Option 2" required>
+    <input type="text" name="option3" placeholder="Option 3" required>
+    <input type="text" name="option4" placeholder="Option 4" required>
+    <input type="text" name="answer" placeholder="Correct Answer" required>
+    <button type="submit">Add Question</button>
+</form>
+<hr>
+<h3>Exam Settings</h3>
+<form method="post" action="/set_exam_duration">
+    <label for="duration">Exam Duration (minutes):</label>
+    <input type="number" name="duration" id="duration" min="1" value="{{ duration }}" required>
+    <button type="submit">Set Duration</button>
+</form>
+<hr>
+<h3>Current Questions</h3>
+<table>
+    <thead>
+        <tr><th>Question</th><th>Options</th></tr>
+    </thead>
+    <tbody>
+    {% for q in questions %}
+        <tr>
+            <td>{{ q.question }}</td>
+            <td>{{ q.options }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+<hr>
+<h3>Student Results</h3>
+<table>
+    <thead>
+        <tr><th>Student</th><th>Score</th><th>Total</th><th>Time</th></tr>
+    </thead>
+    <tbody>
+    {% for r in results %}
+        <tr>
+            <td>{{ r.username }}</td>
+            <td>{{ r.score }}</td>
+            <td>{{ r.total }}</td>
+            <td>{{ r.timestamp }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
