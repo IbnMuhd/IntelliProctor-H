@@ -9,4 +9,3 @@ imutils>=0.5.4
 werkzeug>=2.0.1
 python-dotenv>=0.19.0
 insightface>=0.7.3
-sqlite3  # (Note: sqlite3 is included with Python stdlib, but listed for clarity)
