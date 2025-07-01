@@ -2,10 +2,14 @@
 nixPkgs = [
   "python310",
   "gnumake",
-  "gpp",               # C++ compiler
-  "mesa",              # provides libGL.so.1
-  "libGLU",            # OpenGL utilities
-  "xorg.libX11"        # X11 dependency for OpenGL
+  "gcc",
+  "gpp",               # g++
+  "libGL",             # Required by OpenCV
+  "mesa",              # libGL.so.1 provider
+  "libGLU",            # Optional but sometimes needed
+  "xorg.libX11",       # X11 libraries OpenCV needs
+  "cmake",             # Optional but may be needed for insightface
+  "pkg-config"         # Helps build native modules
 ]
 
 [phases.install]
