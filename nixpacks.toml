@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["libGL"]
+nixPkgs = ["python310", "libGL"]
 
 [setup]
 nixpkgs = ["mesa"]
