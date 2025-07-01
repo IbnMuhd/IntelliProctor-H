@@ -1,2 +1,18 @@
 [phases.setup]
-nixPkgs = ["python310", "libGL", "gcc"]
+nixPkgs = [
+  "python310",
+  "gnumake",
+  "gpp",               # C++ compiler
+  "mesa",              # provides libGL.so.1
+  "libGLU",            # OpenGL utilities
+  "xorg.libX11"        # X11 dependency for OpenGL
+]
+
+[phases.install]
+cmds = [
+  "python -m venv --copies /opt/venv",
+  ". /opt/venv/bin/activate && pip install -r requirements.txt"
+]
+
+[phases.start]
+cmd = "python app.py"
