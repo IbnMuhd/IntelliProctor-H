@@ -1,9 +1,12 @@
-numpy>=1.19.5
-opencv-python>=4.5.5.64
-tensorflow-cpu>=2.8.0
-mediapipe>=0.8.9.1
-imutils>=0.5.4
 flask>=2.0.1
-python-dotenv>=0.19.0
+opencv-python>=4.5.5.64
+numpy>=1.19.5
+pillow>=8.3.2
 scikit-learn>=0.24.2
-pillow>=8.3.2 
+sounddevice>=0.4.4
+mediapipe>=0.10.9
+imutils>=0.5.4
+werkzeug>=2.0.1
+python-dotenv>=0.19.0
+insightface>=0.7.3
+sqlite3  # (Note: sqlite3 is included with Python stdlib, but listed for clarity)
