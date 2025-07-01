@@ -1,8 +1,2 @@
 [phases.setup]
 nixPkgs = ["python310", "libGL", "gcc"]
-
-[setup]
-nixpkgs = ["mesa"]
-
-[install]
-system_packages = ["libgl1-mesa-glx"]
