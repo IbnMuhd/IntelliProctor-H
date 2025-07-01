@@ -516,8 +516,6 @@ def add_alert(user, alert_type, timestamp=None, frame=None):
     conn.close()
 
 if __name__ == '__main__':
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == '--dev':
-        app.run(debug=True, threaded=True, use_reloader=True)
-    else:
-        app.run(debug=True, threaded=True, use_reloader=False)
+    import os
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True, threaded=True)
