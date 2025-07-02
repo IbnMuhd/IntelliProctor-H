@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response, jsonify, request, redirect, url_for, session
+from flask import Flask, render_template, Response, jsonify, request, redirect, url_for, session, flash
 from src.utils.db import add_user_with_embedding, get_face_embedding
 from src.auth.face_auth import FaceAuthenticator
 from src.monitoring.behavior_monitor import BehaviorMonitor
@@ -52,7 +52,11 @@ def init_db():
         c.execute('ALTER TABLE alerts ADD COLUMN image_path TEXT')
     c.execute('''CREATE TABLE IF NOT EXISTS exam_settings (id INTEGER PRIMARY KEY, duration_minutes INTEGER)''')
     c.execute('''CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY, username TEXT, score INTEGER, total INTEGER, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    # Add a default admin if not exists
+    c.execute('''CREATE TABLE IF NOT EXISTS integrity_thresholds (
+        alert_type TEXT PRIMARY KEY,
+        threshold INTEGER
+    )''')
+    # Add default admin if not exists
     from werkzeug.security import generate_password_hash
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
@@ -61,6 +65,16 @@ def init_db():
     c.execute('SELECT * FROM exam_settings WHERE id = 1')
     if not c.fetchone():
         c.execute("INSERT INTO exam_settings (id, duration_minutes) VALUES (1, 30)")
+    # Insert default thresholds if not present
+    default_thresholds = {
+        'face_mismatch': 1,
+        'multiple_faces': 2,
+        'looking_away': 4,
+        'audio': 2,
+        'screen_activity': 1,
+    }
+    for k, v in default_thresholds.items():
+        c.execute('INSERT OR IGNORE INTO integrity_thresholds (alert_type, threshold) VALUES (?, ?)', (k, v))
     conn.commit()
     conn.close()
 
@@ -77,6 +91,44 @@ registered_face_embedding = None
 # In-memory storage for demo
 QUESTIONS = []
 ALERTS = []
+
+# --- Integrity thresholds per alert type ---
+def load_thresholds():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('SELECT alert_type, threshold FROM integrity_thresholds')
+    rows = c.fetchall()
+    conn.close()
+    return {row[0]: row[1] for row in rows}
+
+def save_thresholds(thresholds):
+    conn = get_db()
+    c = conn.cursor()
+    for k, v in thresholds.items():
+        c.execute('UPDATE integrity_thresholds SET threshold = ? WHERE alert_type = ?', (v, k))
+    conn.commit()
+    conn.close()
+
+INTEGRITY_THRESHOLDS = load_thresholds()
+VIOLATION_COUNTS = {}
+
+def increment_violation(user, alert_type):
+    if user is None:
+        user = 'unknown'
+    if user not in VIOLATION_COUNTS:
+        VIOLATION_COUNTS[user] = {}
+    if alert_type not in VIOLATION_COUNTS[user]:
+        VIOLATION_COUNTS[user][alert_type] = 0
+    VIOLATION_COUNTS[user][alert_type] += 1
+    threshold = INTEGRITY_THRESHOLDS.get(alert_type, 1)
+    return VIOLATION_COUNTS[user][alert_type] >= threshold
+
+def reset_violations(user=None):
+    global VIOLATION_COUNTS
+    if user:
+        VIOLATION_COUNTS.pop(user, None)
+    else:
+        VIOLATION_COUNTS = {}
 
 def initialize_system(registered_embedding=None):
     global camera, face_auth, behavior_monitor, registered_face_embedding
@@ -126,13 +178,15 @@ def process_frame(user=None, role=None):
                     if registered_face_embedding is not None:
                         result = face_auth.verify_face(frame, registered_face_embedding)
                         if not result['verified']:
-                            add_alert(user or 'unknown', 'face_mismatch', frame=frame)
+                            if increment_violation(user or 'unknown', 'face_mismatch'):
+                                add_alert(user or 'unknown', 'face_mismatch', frame=frame)
                     behavior_results = behavior_monitor.analyze_frame(frame)
                     frame = behavior_monitor.draw_results(frame, behavior_results)
                     # Log all BehaviorMonitor alerts (all are relevant)
                     for event, triggered in behavior_results.items():
                         if triggered:
-                            add_alert(user or 'unknown', event, frame=frame)
+                            if increment_violation(user or 'unknown', event):
+                                add_alert(user or 'unknown', event, frame=frame)
                 # --- Always update the video feed for smoothness ---
                 if not frame_queue.full():
                     frame_queue.put(frame)
@@ -166,7 +220,8 @@ def monitor_audio(user=None, role=None, threshold=0.02, duration=1, samplerate=1
             if volume_norm > threshold:
                 ALERTS.append({"type": "audio", "time": time.time()})
                 audio_alert = True
-                add_alert(user or 'unknown', 'audio')
+                if increment_violation(user or 'unknown', 'audio'):
+                    add_alert(user or 'unknown', 'audio')
         with sd.InputStream(callback=callback, channels=1, samplerate=samplerate):
             sd.sleep(int(duration * 1000))
 
@@ -198,7 +253,9 @@ def admin():
     for q in questions:
         options = ', '.join([q['option1'], q['option2'], q['option3'], q['option4']])
         questions_fmt.append({'question': q['question'], 'options': options})
-    return render_template('admin.html', questions=questions_fmt, alerts=alerts, duration=duration[0] if duration else 30, results=results)
+    # Pass thresholds to template
+    thresholds = dict(INTEGRITY_THRESHOLDS)
+    return render_template('admin.html', questions=questions_fmt, alerts=alerts, duration=duration[0] if duration else 30, results=results, thresholds=thresholds)
 
 @app.route('/set_exam_duration', methods=['POST'])
 def set_exam_duration():
@@ -209,6 +266,21 @@ def set_exam_duration():
     conn.execute('UPDATE exam_settings SET duration_minutes = ? WHERE id = 1', (duration,))
     conn.commit()
     conn.close()
+    return redirect(url_for('admin'))
+
+@app.route('/set_thresholds', methods=['POST'])
+def set_thresholds():
+    if 'username' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    changed = False
+    for key in INTEGRITY_THRESHOLDS.keys():
+        val = request.form.get(key)
+        if val is not None and val.isdigit():
+            INTEGRITY_THRESHOLDS[key] = int(val)
+            changed = True
+    if changed:
+        save_thresholds(INTEGRITY_THRESHOLDS)
+        flash('Integrity thresholds updated!', 'success')
     return redirect(url_for('admin'))
 
 @app.route('/alerts')
@@ -344,6 +416,7 @@ def exam_questions():
         conn.commit()
         conn.close()
         session.pop('current_exam_page', None)  # Remove marker after submission
+        reset_violations(session.get('username'))  # Reset violation counts after exam
         return render_template('exam_questions.html', questions=questions, score=score, total=total, submitted=True, duration=duration)
     questions = conn.execute("SELECT * FROM questions").fetchall()
     conn.close()
@@ -373,7 +446,8 @@ def screen_activity():
         # Do not log this for admin or anywhere else
         pass
     else:
-        add_alert(session.get('username', 'unknown'), 'screen_activity')
+        if increment_violation(session.get('username', 'unknown'), 'screen_activity'):
+            add_alert(session.get('username', 'unknown'), 'screen_activity')
     return jsonify({"status": ""})
 
 # --- Authentication routes ---
