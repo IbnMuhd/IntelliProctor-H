@@ -19,6 +19,23 @@
     <button type="submit">Set Duration</button>
 </form>
 <hr>
+<h3>Integrity Thresholds</h3>
+<form method="post" action="/set_thresholds">
+    <table>
+        <thead>
+            <tr><th>Alert Type</th><th>Threshold (violations before alert)</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Face Mismatch</td><td><input type="number" name="face_mismatch" min="1" value="{{ thresholds.face_mismatch }}" required></td></tr>
+            <tr><td>Multiple Faces</td><td><input type="number" name="multiple_faces" min="1" value="{{ thresholds.multiple_faces }}" required></td></tr>
+            <tr><td>Looking Away</td><td><input type="number" name="looking_away" min="1" value="{{ thresholds.looking_away }}" required></td></tr>
+            <tr><td>Audio</td><td><input type="number" name="audio" min="1" value="{{ thresholds.audio }}" required></td></tr>
+            <tr><td>Screen Activity</td><td><input type="number" name="screen_activity" min="1" value="{{ thresholds.screen_activity }}" required></td></tr>
+        </tbody>
+    </table>
+    <button type="submit">Update Thresholds</button>
+</form>
+<hr>
 <h3>Current Questions</h3>
 <table>
     <thead>
