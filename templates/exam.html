@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Exam - Proctoring{% endblock %}
 {% block content %}
+<div style="max-width:700px;margin:24px auto 0 auto;">
+  <div style="background:#eaf2ff;border-radius:8px;padding:16px 20px 10px 20px;margin-bottom:18px;text-align:center;">
+    <span style="font-size:1.1em;color:#2356c7;font-weight:600;">Course Code:</span> <span style="font-size:1.1em;">{{ course_code }}</span>
+    <span style="margin-left:18px;font-size:1.1em;color:#2356c7;font-weight:600;">Exam:</span> <span style="font-size:1.1em;">{{ exam_title }}</span>
+  </div>
+</div>
 <h2>Exam</h2>
 <div style="background: #f8f9fa; border-radius: 10px; padding: 24px; margin-bottom: 28px; max-width: 700px; margin-left: auto; margin-right: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.07);">
     <h3 style="color: #4f8cff; margin-bottom: 10px;">Exam Instructions</h3>
@@ -14,12 +20,48 @@
     </ul>
 </div>
 <div style="text-align:center; margin-bottom:32px;">
-    <a href="{{ url_for('exam_questions') }}" class="btn btn-login" style="font-size:1.2em; padding:16px 36px;">Continue to Questions</a>
+    <button id="startExamBtn" class="btn btn-login" style="font-size:1.2em; padding:16px 36px;">Start Exam</button>
+    <span id="startExamSpinner" style="display:none; margin-left:12px; vertical-align:middle;">
+        <span class="spinner" style="display:inline-block; width:22px; height:22px; border:3px solid #4f8cff; border-top:3px solid #fff; border-radius:50%; animation:spin 1s linear infinite;"></span>
+    </span>
+    <div id="startExamMsg" style="margin-top:10px; font-size:1em;"></div>
 </div>
-<div id="proctorCamera" style="display:block; position:fixed; bottom:24px; right:24px; z-index:1000; background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.15); padding:8px;">
-    <img id="proctorFeed" src="{{ url_for('video_feed') }}" alt="Proctoring Camera" style="width:180px; border-radius:8px; border:2px solid #4f8cff;">
-    <div style="font-size:0.9em; color:#555; margin-top:4px;">Proctoring Active</div>
-</div>
+<style>
+@keyframes spin { 0% { transform: rotate(0deg);} 100% { transform: rotate(360deg);} }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const btn = document.getElementById('startExamBtn');
+    const spinner = document.getElementById('startExamSpinner');
+    const msg = document.getElementById('startExamMsg');
+    if(btn) {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            msg.textContent = '';
+            fetch('/start_exam').then(res => res.json()).then(data => {
+                spinner.style.display = 'none';
+                if(data.status === 'success' && data.redirect) {
+                    msg.style.color = '#28a745';
+                    msg.textContent = 'Exam started! Redirecting...';
+                    setTimeout(() => { window.location.href = data.redirect; }, 1000);
+                } else {
+                    btn.disabled = false;
+                    msg.style.color = '#d9534f';
+                    msg.textContent = data.message || 'Failed to start exam.';
+                }
+            }).catch(err => {
+                spinner.style.display = 'none';
+                btn.disabled = false;
+                msg.style.color = '#d9534f';
+                msg.textContent = 'Network error. Please try again.';
+            });
+        });
+    }
+});
+</script>
+<!-- Proctoring video feed removed from exam.html; now only shown on exam_questions.html -->
 <div id="proctorModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(44,62,80,0.75); z-index:2000; align-items:center; justify-content:center;">
     <div style="background:#fff; border-radius:12px; padding:32px 28px; max-width:400px; margin:auto; text-align:center; box-shadow:0 4px 24px rgba(0,0,0,0.18);">
         <h3 style="color:#4f8cff;">Proctoring System Active</h3>

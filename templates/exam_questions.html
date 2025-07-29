@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Exam Questions - Proctoring{% endblock %}
 {% block content %}
+<div style="max-width:700px;margin:24px auto 0 auto;">
+  <div style="background:#eaf2ff;border-radius:8px;padding:16px 20px 10px 20px;margin-bottom:18px;text-align:center;">
+    <span style="font-size:1.1em;color:#2356c7;font-weight:600;">Course Code:</span> <span style="font-size:1.1em;">{{ course_code }}</span>
+    <span style="margin-left:18px;font-size:1.1em;color:#2356c7;font-weight:600;">Exam:</span> <span style="font-size:1.1em;">{{ exam_title }}</span>
+  </div>
+</div>
 <h2>Exam Questions</h2>
 <div id="timer" style="font-size:1.2em; color:#d9534f; margin-bottom:10px;"></div>
 <div id="progress" style="font-size:1em; color:#333; margin-bottom:10px;"></div>

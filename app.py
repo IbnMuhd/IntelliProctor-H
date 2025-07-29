@@ -18,11 +18,34 @@ from werkzeug.security import check_password_hash
 import logging
 from datetime import datetime
 import uuid
+from flask_wtf import CSRFProtect
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
-app.secret_key = "your_secret_key"
+# Use environment variable for secret key
+app.secret_key = os.environ.get("EXAMGUARD_SECRET_KEY", "unsafe_default_secret_key")
+if app.secret_key == "unsafe_default_secret_key":
+    logging.warning("SECURITY WARNING: Using default secret key. Set EXAMGUARD_SECRET_KEY in your environment!")
+
+# Secure session cookie settings
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# Only set secure flag if running in production (HTTPS)
+if os.environ.get('FLASK_ENV') == 'production' or os.environ.get('EXAMGUARD_USE_HTTPS') == '1':
+    app.config['SESSION_COOKIE_SECURE'] = True
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
+
+# Initialize rate limiting
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"]
+)
 
 # Database configuration
 DATABASE = "proctoring.db"
@@ -451,6 +474,8 @@ def screen_activity():
     return jsonify({"status": ""})
 
 # --- Authentication routes ---
+@csrf.exempt
+@limiter.limit("5 per minute")
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     import logging
@@ -504,6 +529,8 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
+@csrf.exempt
+@limiter.limit("5 per minute")
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     global face_auth
@@ -516,9 +543,9 @@ def register():
         face_image_b64 = request.form.get('face_image')
         admin_code = request.form.get('admin_code', '')
         # Only allow admin registration if correct code is provided
-        if role == 'admin':
-            if admin_code != 'asz62656453#':
-                return render_template('register.html', error="Invalid admin registration code.")
+        admin_secret = os.environ.get("EXAMGUARD_ADMIN_CODE", "asz62656453#")
+        if admin_code != admin_secret:
+            return render_template('register.html', error="Invalid admin registration code.")
         if face_image_b64:
             if ',' in face_image_b64:
                 face_image_b64 = face_image_b64.split(',')[1]

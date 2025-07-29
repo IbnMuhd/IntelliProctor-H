@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Student Results - Proctoring{% endblock %}
+{% block content %}
+<style>
+  .results-section {
+    background: #f8faff;
+    border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(79,140,255,0.08);
+    padding: 28px 24px 20px 24px;
+    margin: 40px auto 32px auto;
+    max-width: 900px;
+  }
+  .results-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(79,140,255,0.06);
+  }
+  .results-table th, .results-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #e3eaf7;
+    text-align: left;
+    font-size: 1.05em;
+  }
+  .results-table th {
+    background: #eaf2ff;
+    color: #2356c7;
+    font-weight: 600;
+  }
+  .results-table tr:last-child td {
+    border-bottom: none;
+  }
+</style>
+<div class="results-section">
+  <h2 style="margin-bottom:18px;">Student Results</h2>
+  <div style="overflow-x:auto;">
+    <table class="results-table">
+      <thead>
+        <tr><th>Student</th><th>Score</th><th>Total</th><th>Time</th></tr>
+      </thead>
+      <tbody>
+      {% for r in results %}
+        <tr>
+          <td>{{ r.username }}</td>
+          <td>{{ r.score }}</td>
+          <td>{{ r.total }}</td>
+          <td>{{ r.timestamp }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

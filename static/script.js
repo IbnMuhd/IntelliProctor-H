@@ -1,8 +1,4 @@
-function startExam() {
-    fetch('/start_exam').then(res => res.json()).then(data => {
-        alert('Exam started!');
-    });
-}
+// startExam logic now handled inline in exam.html for better UX
 
 // Periodic identity verification
 setInterval(() => {

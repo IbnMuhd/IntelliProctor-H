@@ -67,6 +67,10 @@
     <form id="loginForm" method="post">
         <input name="username" placeholder="Username" required>
         <input name="password" type="password" placeholder="Password" required>
+        <select name="role" id="roleSelect">
+            <option value="student">Student</option>
+            <option value="admin">Admin</option>
+        </select>
         <input type="hidden" name="face_image" id="face_image">
         <button type="submit">Login (with Face)</button>
     </form>
@@ -81,6 +85,20 @@
     const canvas = document.getElementById('canvas');
     const loginForm = document.getElementById('loginForm');
     const faceImageInput = document.getElementById('face_image');
+    const roleSelect = document.getElementById('roleSelect');
+
+    // Show/hide video feed based on role
+    function updateVideoVisibility() {
+        if (roleSelect.value === 'admin') {
+            video.style.display = 'none';
+            canvas.style.display = 'none';
+        } else {
+            video.style.display = '';
+            canvas.style.display = 'none';
+        }
+    }
+    roleSelect.addEventListener('change', updateVideoVisibility);
+    updateVideoVisibility();
 
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
@@ -92,28 +110,21 @@
 
     loginForm.addEventListener('submit', function (e) {
         e.preventDefault();
-
-        if (!video.srcObject || video.readyState !== 4) {
-            alert('Camera not ready. Please allow camera access and try again.');
+        if (roleSelect.value === 'admin') {
+            // No face image for admin
+            faceImageInput.value = '';
+            loginForm.submit();
             return;
         }
-
+        if (!video.srcObject || video.readyState !== 4) {
+            alert('Camera not ready.');
+            return;
+        }
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
         faceImageInput.value = canvas.toDataURL('image/jpeg');
-
-        const btn = this.querySelector('button[type="submit"]');
-        btn.disabled = true;
-        btn.textContent = 'Face verified! Logging in...';
-
-        setTimeout(() => {
-            loginForm.submit();
-
-            if (video.srcObject) {
-                video.srcObject.getTracks().forEach(track => track.stop());
-            }
-        }, 800);
+        loginForm.submit();
     });
 </script>
 </body>

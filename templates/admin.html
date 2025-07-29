@@ -1,70 +1,245 @@
 {% extends "base.html" %}
 {% block title %}Admin - Proctoring{% endblock %}
 {% block content %}
-<h2>Set Exam Questions</h2>
-<form method="post">
-    <input type="text" name="question" placeholder="Question" required>
-    <input type="text" name="option1" placeholder="Option 1" required>
-    <input type="text" name="option2" placeholder="Option 2" required>
-    <input type="text" name="option3" placeholder="Option 3" required>
-    <input type="text" name="option4" placeholder="Option 4" required>
-    <input type="text" name="answer" placeholder="Correct Answer" required>
-    <button type="submit">Add Question</button>
-</form>
-<hr>
-<h3>Exam Settings</h3>
-<form method="post" action="/set_exam_duration">
-    <label for="duration">Exam Duration (minutes):</label>
-    <input type="number" name="duration" id="duration" min="1" value="{{ duration }}" required>
-    <button type="submit">Set Duration</button>
-</form>
-<hr>
-<h3>Integrity Thresholds</h3>
-<form method="post" action="/set_thresholds">
-    <table>
-        <thead>
-            <tr><th>Alert Type</th><th>Threshold (violations before alert)</th></tr>
-        </thead>
-        <tbody>
-            <tr><td>Face Mismatch</td><td><input type="number" name="face_mismatch" min="1" value="{{ thresholds.face_mismatch }}" required></td></tr>
-            <tr><td>Multiple Faces</td><td><input type="number" name="multiple_faces" min="1" value="{{ thresholds.multiple_faces }}" required></td></tr>
-            <tr><td>Looking Away</td><td><input type="number" name="looking_away" min="1" value="{{ thresholds.looking_away }}" required></td></tr>
-            <tr><td>Audio</td><td><input type="number" name="audio" min="1" value="{{ thresholds.audio }}" required></td></tr>
-            <tr><td>Screen Activity</td><td><input type="number" name="screen_activity" min="1" value="{{ thresholds.screen_activity }}" required></td></tr>
-        </tbody>
-    </table>
-    <button type="submit">Update Thresholds</button>
-</form>
-<hr>
-<h3>Current Questions</h3>
-<table>
-    <thead>
-        <tr><th>Question</th><th>Options</th></tr>
-    </thead>
-    <tbody>
-    {% for q in questions %}
-        <tr>
-            <td>{{ q.question }}</td>
-            <td>{{ q.options }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-<hr>
-<h3>Student Results</h3>
-<table>
-    <thead>
-        <tr><th>Student</th><th>Score</th><th>Total</th><th>Time</th></tr>
-    </thead>
-    <tbody>
-    {% for r in results %}
-        <tr>
-            <td>{{ r.username }}</td>
-            <td>{{ r.score }}</td>
-            <td>{{ r.total }}</td>
-            <td>{{ r.timestamp }}</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&family=Inter:wght@400;500;700&display=swap');
+    .admin-layout {
+      display: flex;
+      background: #f4f8fd;
+      min-height: 100vh;
+      align-items: flex-start;
+      font-family: 'Inter', Arial, sans-serif;
+    }
+    .sidebar {
+      width: 220px;
+      background: linear-gradient(180deg, #2356c7 80%, #4f8cff 100%);
+      color: #fff;
+      padding: 36px 0 24px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 2px 0 8px rgba(25,86,199,0.08);
+      border-radius: 0 0 18px 0;
+      min-height: unset;
+      position: static;
+      max-height: fit-content;
+      font-family: 'Montserrat', Arial, sans-serif;
+    }
+    .sidebar h2 {
+      font-size: 1.5em;
+      font-weight: bold;
+      margin-bottom: 32px;
+      letter-spacing: 1px;
+    }
+    .sidebar-nav {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 40px;
+    }
+    .sidebar-nav a {
+      color: #fffbe6;
+      text-decoration: none;
+      font-size: 1.08em;
+      font-weight: 600;
+      padding: 12px 32px;
+      border-radius: 0 20px 20px 0;
+      transition: background 0.18s, color 0.18s;
+      display: block;
+    }
+    .sidebar-nav a.active, .sidebar-nav a:hover {
+      background: #fffbe6;
+      color: #2356c7;
+    }
+    .sidebar .logout-link {
+      margin-top: 18px;
+      margin-bottom: 12px;
+      color: #ffe082;
+      font-size: 1em;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    .main-content {
+      flex: 1;
+      padding: 40px 5vw 40px 5vw;
+      max-width: 1000px;
+      margin: 0 auto;
+      font-family: 'Inter', Arial, sans-serif;
+    }
+    .admin-section {
+      background: #f8faff;
+      border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(79,140,255,0.08);
+      padding: 28px 24px 20px 24px;
+      margin-bottom: 32px;
+      transition: box-shadow 0.2s;
+    }
+    .admin-section:hover {
+      box-shadow: 0 4px 16px rgba(79,140,255,0.16);
+    }
+    .admin-section h3 {
+      margin-top: 0;
+      color: #2a3a5a;
+      font-size: 1.25em;
+    }
+    .admin-section form input, .admin-section form select {
+      margin-bottom: 10px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 1px solid #bcd0ee;
+      font-size: 1.08em;
+      width: 100%;
+      max-width: 350px;
+      box-sizing: border-box;
+    }
+    .admin-section form button {
+      background: linear-gradient(90deg,#4f8cff,#2356c7);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 12px 22px;
+      font-size: 1.08em;
+      font-weight: bold;
+      margin-top: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .admin-section form button:hover {
+      background: linear-gradient(90deg,#2356c7,#4f8cff);
+    }
+    .admin-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 18px;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 4px rgba(79,140,255,0.06);
+    }
+    .admin-table th, .admin-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid #e3eaf7;
+      text-align: left;
+      font-size: 1.05em;
+    }
+    .admin-table th {
+      background: #eaf2ff;
+      color: #2356c7;
+      font-weight: 600;
+    }
+    .admin-table tr:last-child td {
+      border-bottom: none;
+    }
+    @media (max-width: 900px) {
+      .admin-layout { flex-direction: column; }
+      .sidebar { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; min-height: unset; padding: 18px 0; position: static; }
+      .sidebar-nav { flex-direction: row; gap: 0; margin-bottom: 0; }
+      .sidebar-nav a { border-radius: 6px; padding: 10px 16px; margin: 0 4px; }
+      .main-content { padding: 24px 2vw; }
+    }
+    @media (max-width: 600px) {
+      .main-content { padding: 10px 2vw; }
+      .admin-section { padding: 12px 4vw; }
+      .admin-table th, .admin-table td { padding: 8px 4px; font-size: 0.97em; }
+    }
+  </style>
+<div class="admin-layout">
+  <nav class="sidebar">
+    <h2>Admin</h2>
+    <div class="sidebar-nav">
+      <a href="/admin?section=dashboard" class="{% if section == 'dashboard' %}active{% endif %}">Dashboard</a>
+      <a href="/admin?section=exam_settings" class="{% if section == 'exam_settings' %}active{% endif %}">Exam Settings</a>
+      <a href="/admin?section=thresholds" class="{% if section == 'thresholds' %}active{% endif %}">Integrity Thresholds</a>
+      <a href="/results_page" class="{% if request.path == '/results_page' %}active{% endif %}">Results</a>
+      <a href="/logout" class="logout-link">Logout</a>
+    </div>
+  </nav>
+  <main class="main-content">
+    <h2 style="margin-bottom:18px;">Admin Dashboard</h2>
+    <div style="color:#888;font-size:0.95em;margin-bottom:8px;display:none;">[DEBUG: section = {{ section }}]</div>
+    {% if section == 'dashboard' or not section %}
+    <section class="admin-section">
+      <h3>Exam & Question Management</h3>
+      <form method="post" action="/create_exam" style="margin-bottom:18px;">
+          <input type="text" name="course_code" placeholder="Course Code (e.g. COEN572)" required>
+          <input type="text" name="exam_title" placeholder="Exam Title (e.g. Midterm)" required>
+          <button type="submit">Create Exam</button>
+      </form>
+      <form method="post" action="/select_exam" style="margin-bottom:18px;">
+          <label for="exam_id">Select Exam:</label>
+          <select name="exam_id" id="exam_id" required>
+              {% for exam in exams %}
+              <option value="{{ exam.id }}" {% if exam.id == selected_exam_id %}selected{% endif %}>{{ exam.course_code }} - {{ exam.exam_title }}</option>
+              {% endfor %}
+          </select>
+          <button type="submit">Load Exam</button>
+      </form>
+      <form method="post" action="/add_question" style="margin-bottom:18px;">
+          <input type="hidden" name="exam_id" value="{{ selected_exam_id }}">
+          <input type="text" name="question" placeholder="Question" required>
+          <input type="text" name="option1" placeholder="Option 1" required>
+          <input type="text" name="option2" placeholder="Option 2" required>
+          <input type="text" name="option3" placeholder="Option 3" required>
+          <input type="text" name="option4" placeholder="Option 4" required>
+          <input type="text" name="answer" placeholder="Correct Answer" required>
+          <button type="submit">Add Question</button>
+      </form>
+      <form method="post" action="/upload_questions" enctype="multipart/form-data" style="margin-bottom:18px;">
+          <input type="hidden" name="exam_id" value="{{ selected_exam_id }}">
+          <label for="questions_file">Bulk Upload Questions (CSV):</label>
+          <input type="file" name="questions_file" id="questions_file" accept=".csv" required>
+          <button type="submit">Upload</button>
+          <div style="font-size:0.95em;color:#666;margin-top:4px;">CSV columns: question,option1,option2,option3,option4,answer</div>
+      </form>
+      <h4 style="margin-top:24px;">Current Questions</h4>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+            <thead>
+                <tr><th>Question</th><th>Options</th></tr>
+            </thead>
+            <tbody>
+            {% for q in questions %}
+                <tr>
+                    <td>{{ q.question }}</td>
+                    <td>{{ q.options }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+      </div>
+    </section>
+    {% elif section == 'exam_settings' %}
+    <section class="admin-section">
+      <h3>Exam Settings</h3>
+      <form method="post" action="/set_exam_duration">
+          <label for="duration">Exam Duration (minutes):</label>
+          <input type="number" name="duration" id="duration" min="1" value="{{ duration }}" required>
+          <button type="submit">Set Duration</button>
+      </form>
+    </section>
+    {% elif section == 'thresholds' %}
+    <section class="admin-section">
+      <h3>Integrity Thresholds</h3>
+      <form method="post" action="/set_thresholds">
+          <div style="overflow-x:auto;">
+          <table class="admin-table">
+              <thead>
+                  <tr><th>Alert Type</th><th>Threshold (violations before alert)</th></tr>
+              </thead>
+              <tbody>
+                  <tr><td>Face Mismatch</td><td><input type="number" name="face_mismatch" min="1" value="{{ thresholds.face_mismatch }}" required></td></tr>
+                  <tr><td>Multiple Faces</td><td><input type="number" name="multiple_faces" min="1" value="{{ thresholds.multiple_faces }}" required></td></tr>
+                  <tr><td>Looking Away</td><td><input type="number" name="looking_away" min="1" value="{{ thresholds.looking_away }}" required></td></tr>
+                  <tr><td>Audio</td><td><input type="number" name="audio" min="1" value="{{ thresholds.audio }}" required></td></tr>
+                  <tr><td>Screen Activity</td><td><input type="number" name="screen_activity" min="1" value="{{ thresholds.screen_activity }}" required></td></tr>
+              </tbody>
+          </table>
+          </div>
+          <button type="submit">Update Thresholds</button>
+      </form>
+    </section>
+    {% endif %}
+  </main>
+</div>
 {% endblock %}
