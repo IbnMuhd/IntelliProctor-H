@@ -11,14 +11,16 @@ setInterval(() => {
       });
 }, 5 * 60 * 1000);
 
-// Screen activity monitoring
-document.addEventListener('visibilitychange', function() {
-    if (document.hidden) {
-        fetch('/screen_activity', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({event: 'left_exam_screen'})
-        });
-        alert('You have left the exam screen!');
-    }
-});
+// Screen activity monitoring (only for students)
+if (typeof userRole === 'undefined' || userRole === 'student') {
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            fetch('/screen_activity', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({event: 'left_exam_screen'})
+            });
+            alert('You have left the exam screen!');
+        }
+    });
+}

@@ -47,8 +47,22 @@ limiter = Limiter(
     default_limits=["200 per day", "50 per hour"]
 )
 
+
 # Database configuration
 DATABASE = "proctoring.db"
+
+# Ensure exams table exists
+def ensure_exams_table():
+    conn = get_db()
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS exams (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        course_code TEXT,
+        exam_title TEXT
+    )''')
+    conn.commit()
+    conn.close()
+ensure_exams_table()
 
 def get_db():
     conn = sqlite3.connect(DATABASE)
@@ -253,19 +267,25 @@ def index():
     return render_template('index.html')
 
 # --- Admin Side ---
+
+# --- Admin Dashboard ---
 @app.route('/admin', methods=['GET', 'POST'])
 def admin():
     if 'username' not in session or session.get('role') != 'admin':
         return redirect(url_for('login'))
     conn = get_db()
-    if request.method == 'POST' and 'question' in request.form:
-        question = request.form.get('question')
-        options = [request.form.get(f'option{i}') for i in range(1, 5)]
-        answer = request.form.get('answer')
-        conn.execute('''INSERT INTO questions (question, option1, option2, option3, option4, answer)
-                        VALUES (?, ?, ?, ?, ?, ?)''', (question, *options, answer))
-        conn.commit()
-    questions = conn.execute("SELECT * FROM questions").fetchall()
+    exams = conn.execute("SELECT * FROM exams").fetchall()
+    selected_exam_id = request.args.get('exam_id') or session.get('selected_exam_id')
+    if selected_exam_id:
+        session['selected_exam_id'] = selected_exam_id
+    else:
+        selected_exam_id = exams[0]['id'] if exams else None
+        session['selected_exam_id'] = selected_exam_id
+    questions = []
+    if selected_exam_id:
+        questions = conn.execute("SELECT * FROM questions WHERE exam_id = ?", (selected_exam_id,)).fetchall()
+    else:
+        questions = []
     # Only show alerts for students (not admins) and exclude screen_activity and 'You have left the exam screen!'
     alerts = conn.execute("SELECT * FROM alerts WHERE user IN (SELECT username FROM users WHERE role = 'student') AND alert_type != 'screen_activity' AND alert_type != 'You have left the exam screen!' ORDER BY timestamp DESC LIMIT 20").fetchall()
     duration = conn.execute('SELECT duration_minutes FROM exam_settings WHERE id = 1').fetchone()
@@ -276,9 +296,83 @@ def admin():
     for q in questions:
         options = ', '.join([q['option1'], q['option2'], q['option3'], q['option4']])
         questions_fmt.append({'question': q['question'], 'options': options})
-    # Pass thresholds to template
     thresholds = dict(INTEGRITY_THRESHOLDS)
-    return render_template('admin.html', questions=questions_fmt, alerts=alerts, duration=duration[0] if duration else 30, results=results, thresholds=thresholds)
+    return render_template('admin.html', exams=exams, selected_exam_id=selected_exam_id, questions=questions_fmt, alerts=alerts, duration=duration[0] if duration else 30, results=results, thresholds=thresholds)
+
+# --- Create Exam ---
+@app.route('/create_exam', methods=['POST'])
+def create_exam():
+    if 'username' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    course_code = request.form.get('course_code')
+    exam_title = request.form.get('exam_title')
+    if not course_code or not exam_title:
+        flash('Course code and exam title are required.', 'danger')
+        return redirect(url_for('admin'))
+    conn = get_db()
+    conn.execute('INSERT INTO exams (course_code, exam_title) VALUES (?, ?)', (course_code, exam_title))
+    conn.commit()
+    conn.close()
+    flash('Exam created successfully!', 'success')
+    return redirect(url_for('admin'))
+
+# --- Select Exam ---
+@app.route('/select_exam', methods=['POST'])
+def select_exam():
+    if 'username' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    exam_id = request.form.get('exam_id')
+    if exam_id:
+        session['selected_exam_id'] = exam_id
+    return redirect(url_for('admin', exam_id=exam_id))
+
+# --- Add Question ---
+@app.route('/add_question', methods=['POST'])
+def add_question():
+    if 'username' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    exam_id = request.form.get('exam_id')
+    question = request.form.get('question')
+    options = [request.form.get(f'option{i}') for i in range(1, 5)]
+    answer = request.form.get('answer')
+    if not (exam_id and question and all(options) and answer):
+        flash('All question fields are required.', 'danger')
+        return redirect(url_for('admin'))
+    conn = get_db()
+    conn.execute('''INSERT INTO questions (exam_id, question, option1, option2, option3, option4, answer)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)''', (exam_id, question, *options, answer))
+    conn.commit()
+    conn.close()
+    flash('Question added successfully!', 'success')
+    return redirect(url_for('admin'))
+
+# --- Bulk Upload Questions ---
+@app.route('/upload_questions', methods=['POST'])
+def upload_questions():
+    if 'username' not in session or session.get('role') != 'admin':
+        return redirect(url_for('login'))
+    exam_id = request.form.get('exam_id')
+    file = request.files.get('questions_file')
+    if not (exam_id and file):
+        flash('Exam and file are required.', 'danger')
+        return redirect(url_for('admin'))
+    import csv
+    import io
+    stream = io.StringIO(file.stream.read().decode("UTF8"), newline=None)
+    reader = csv.reader(stream)
+    conn = get_db()
+    count = 0
+    for row in reader:
+        if len(row) != 6:
+            continue
+        question, option1, option2, option3, option4, answer = row
+        conn.execute('''INSERT INTO questions (exam_id, question, option1, option2, option3, option4, answer)
+                       VALUES (?, ?, ?, ?, ?, ?, ?)''', (exam_id, question, option1, option2, option3, option4, answer))
+        count += 1
+    conn.commit()
+    conn.close()
+    flash(f'{count} questions uploaded successfully!', 'success')
+    return redirect(url_for('admin'))
 
 @app.route('/set_exam_duration', methods=['POST'])
 def set_exam_duration():
@@ -363,7 +457,9 @@ def register_video_feed():
     return Response(generate_frames(),
                     mimetype='multipart/x-mixed-replace; boundary=frame')
 
-@app.route('/start_exam')
+
+# --- Start Exam: Connects to exam_questions page ---
+@app.route('/start_exam', methods=['POST'])
 def start_exam():
     try:
         if session.get('role') != 'student':
@@ -400,11 +496,21 @@ def start_exam():
         audio_thread.daemon = True
         audio_thread.start()
 
-        return jsonify({"status": "success", "redirect": url_for('exam')})
+        # Redirect to exam_questions page
+        return jsonify({"status": "success", "redirect": url_for('exam_questions')})
     except Exception as e:
         import traceback
         print('Error in /start_exam:', traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
+# --- Results Page ---
+@app.route('/results', methods=['GET'])
+def results():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    conn = get_db()
+    results = conn.execute('SELECT * FROM results ORDER BY timestamp DESC LIMIT 50').fetchall()
+    conn.close()
+    return render_template('results_page.html', results=results)
 
 @app.route('/exam', methods=['GET', 'POST'])
 def exam():
@@ -492,7 +598,12 @@ def login():
         conn.close()
         if user and check_password_hash(user['password_hash'], password):
             logging.info(f"Password verified for user: {username}")
-            if face_image_b64:
+            if user['role'] == 'admin':
+                session['username'] = user['username']
+                session['role'] = user['role']
+                logging.info(f"Redirecting {username} to admin dashboard.")
+                return redirect(url_for('admin'))
+            elif face_image_b64:
                 if ',' in face_image_b64:
                     face_image_b64 = face_image_b64.split(',')[1]
                 try:
@@ -509,10 +620,7 @@ def login():
                     session['username'] = user['username']
                     session['role'] = user['role']
                     logging.info(f"Redirecting {username} to dashboard: {user['role']}")
-                    if user['role'] == 'admin':
-                        return redirect(url_for('admin'))
-                    else:
-                        return redirect(url_for('student'))
+                    return redirect(url_for('student'))
                 except Exception as e:
                     logging.error(f"Image decode error for {username}: {e}")
                     return render_template('login.html', error=f"Image decode error: {e}")

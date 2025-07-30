@@ -1,55 +1,286 @@
 {% extends "base.html" %}
-{% block title %}Student - Proctoring{% endblock %}
+{% block title %}Exam Dashboard - ExamGuard{% endblock %}
 {% block content %}
-<h2>Exam</h2>
-
-<div style="background: #f8f9fa; border-radius: 10px; padding: 24px; margin-bottom: 28px; max-width: 700px; margin-left: auto; margin-right: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.07);">
-    <h3 style="color: #4f8cff; margin-bottom: 10px;">Please Read Before Starting Your Exam</h3>
-    <ul style="font-size: 1.05em; color: #222; padding-left: 20px;">
-        <li>Your exam session will be monitored using AI proctoring technology.</li>
-        <li>Your camera, microphone, and screen activity will be observed throughout the exam.</li>
-        <li>Make sure you are alone in a quiet, well-lit room.</li>
-        <li>Do not use unauthorized materials, devices, or communicate with others during the exam.</li>
-        <li>Remain in front of your camera and avoid looking away from the screen.</li>
-        <li>Do not leave or minimize the exam window; doing so may trigger alerts.</li>
-        <li>Any suspicious behavior (such as multiple faces, background noise, or use of a phone) will be flagged and reported to the administrator.</li>
-        <li>If you experience technical issues, contact support immediately.</li>
-        <li>By starting the exam, you agree to abide by these rules and understand that violations may result in disqualification.</li>
-    </ul>
-</div>
-<form id="examStartForm">
-    <button id="startExam" type="button" class="btn start-exam-btn">Start Exam</button>
-    <span id="startExamLoading" style="display:none; margin-left:10px; color:#4f8cff; font-weight:bold;">Starting...</span>
-    <span id="startExamError" style="display:none; margin-left:10px; color:#d9534f; font-weight:bold;"></span>
-</form>
-<script>
-    const startExamBtn = document.getElementById('startExam');
-    const startExamLoading = document.getElementById('startExamLoading');
-    const startExamError = document.getElementById('startExamError');
-    if(startExamBtn) {
-        startExamBtn.addEventListener('click', function() {
-            startExamError.style.display = 'none';
-            startExamLoading.style.display = 'inline';
-            startExamBtn.disabled = true;
-            fetch('/start_exam').then(res => {
-                if (!res.ok) throw new Error('Network error');
-                return res.json();
-            }).then(data => {
-                startExamLoading.style.display = 'none';
-                if(data.status === 'success' && data.redirect) {
-                    window.location.href = data.redirect;
-                } else {
-                    startExamError.textContent = data.message || 'Failed to start proctoring.';
-                    startExamError.style.display = 'inline';
-                    startExamBtn.disabled = false;
-                }
-            }).catch(err => {
-                startExamLoading.style.display = 'none';
-                startExamError.textContent = 'Could not start exam. Please check your connection or try again.';
-                startExamError.style.display = 'inline';
-                startExamBtn.disabled = false;
-            });
-        });
+<style>
+    :root {
+        --primary: #1976f2;
+        --primary-light: #4facfe;
+        --primary-dark: #1565c0;
+        --error: #f44336;
+        --success: #4caf50;
+        --warning: #ff9800;
+        --text: #333;
+        --text-light: #666;
+        --background: #f8f9fa;
+        --border: #e0e0e0;
+        --border-radius: 10px;
+        --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --transition: all 0.3s ease;
     }
+
+    .exam-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .exam-header {
+        text-align: center;
+        margin-bottom: 2rem;
+    }
+
+    .exam-header h2 {
+        font-size: 2rem;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+    }
+
+    .exam-header p {
+        color: var(--text-light);
+        font-size: 1.1rem;
+    }
+
+    .exam-guidelines {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 2rem;
+        margin-bottom: 2rem;
+        box-shadow: var(--shadow);
+        border: 1px solid var(--border);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .exam-guidelines::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: linear-gradient(to bottom, var(--primary), var(--primary-light));
+    }
+
+    .exam-guidelines h3 {
+        color: var(--primary);
+        margin-bottom: 1.5rem;
+        font-size: 1.4rem;
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .exam-guidelines h3 i {
+        font-size: 1.5rem;
+    }
+
+    .exam-guidelines ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+
+    .exam-guidelines li {
+        margin-bottom: 1rem;
+        padding-left: 2rem;
+        position: relative;
+        color: var(--text);
+        line-height: 1.6;
+    }
+
+    .exam-guidelines li::before {
+        content: '•';
+        color: var(--primary);
+        font-weight: bold;
+        font-size: 1.5rem;
+        position: absolute;
+        left: 0;
+        top: -2px;
+    }
+
+    .exam-actions {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .btn {
+        padding: 0.75rem 2rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: var(--border-radius);
+        background: var(--primary);
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: var(--transition);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        min-width: 200px;
+    }
+
+    .btn:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(25, 118, 242, 0.2);
+    }
+
+    .btn:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .loading {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin-left: 1rem;
+        color: var(--primary);
+        font-weight: 500;
+    }
+
+    .loading i {
+        animation: spin 1s linear infinite;
+    }
+
+    .error-message {
+        color: var(--error);
+        background: rgba(244, 67, 54, 0.1);
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        margin-top: 1rem;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+        max-width: 500px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+        .exam-container {
+            padding: 1.5rem;
+        }
+
+        .exam-header h2 {
+            font-size: 1.8rem;
+        }
+
+        .exam-guidelines {
+            padding: 1.5rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .exam-container {
+            padding: 1rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 0.75rem;
+        }
+    }
+</style>
+
+<div class="exam-container">
+    <div class="exam-header">
+        <h2>Exam Dashboard</h2>
+        <p>Welcome to your secure exam environment</p>
+    </div>
+
+    <div class="exam-guidelines">
+        <h3>
+            <i class="fas fa-clipboard-check"></i>
+            Exam Guidelines
+        </h3>
+        <ul>
+            <li>Your exam session will be monitored using AI proctoring technology.</li>
+            <li>Your camera, microphone, and screen activity will be observed throughout the exam.</li>
+            <li>Make sure you are alone in a quiet, well-lit room.</li>
+            <li>Do not use unauthorized materials, devices, or communicate with others during the exam.</li>
+            <li>Remain in front of your camera and avoid looking away from the screen.</li>
+            <li>Do not leave or minimize the exam window; doing so may trigger alerts.</li>
+            <li>Any suspicious behavior (such as multiple faces, background noise, or use of a phone) will be flagged and reported to the administrator.</li>
+            <li>If you experience technical issues, contact support immediately.</li>
+            <li>By starting the exam, you agree to abide by these rules and understand that violations may result in disqualification.</li>
+        </ul>
+    </div>
+
+    <div class="exam-actions">
+        <button id="startExam" class="btn">
+            <i class="fas fa-play"></i>
+            Start Exam
+        </button>
+        <span id="startExamLoading" class="loading" style="display: none;">
+            <i class="fas fa-spinner"></i>
+            Starting Exam...
+        </span>
+        <div id="startExamError" class="error-message">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="errorText"></span>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const startExamBtn = document.getElementById('startExam');
+        const startExamLoading = document.getElementById('startExamLoading');
+        const startExamError = document.getElementById('startExamError');
+        const errorText = document.getElementById('errorText');
+
+        if (startExamBtn) {
+            startExamBtn.addEventListener('click', function() {
+                // Reset states
+                startExamError.style.display = 'none';
+                startExamLoading.style.display = 'inline-flex';
+                startExamBtn.disabled = true;
+
+                // Make API call to start exam
+                fetch('/start_exam', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'success' && data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        showError(data.message || 'Failed to start exam. Please try again.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showError('Could not start exam. Please check your connection and try again.');
+                });
+            });
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            startExamError.style.display = 'flex';
+            startExamLoading.style.display = 'none';
+            startExamBtn.disabled = false;
+        }
+    });
 </script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 {% endblock %}

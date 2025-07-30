@@ -1,114 +1,376 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Register</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - ExamGuard</title>
     <style>
-        .register-container {
-            max-width: 500px;
-            margin: 40px auto;
-            text-align: center;
-            font-family: 'Segoe UI', Arial, sans-serif;
+        :root {
+            --primary: #1976f2;
+            --primary-dark: #1565c0;
+            --error: #f44336;
+            --success: #4caf50;
+            --text: #333;
+            --text-light: #666;
+            --border: #ddd;
+            --border-radius: 8px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
         }
-        .register-media img {
-            width: 10%;
-            max-height: 50px;
-            border-radius: 16px;
-            object-fit: cover;
-            margin-bottom: 16px;
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
-        video, canvas {
-            border: 2px solid #333;
-            border-radius: 8px;
-            width: 320px;
-            margin-bottom: 16px;
-        }
-        .register-container form {
+
+        body {
+            font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f9f9f9;
+            color: var(--text);
+            line-height: 1.6;
             display: flex;
-            flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
         }
-        .register-container input, .register-container select {
-            padding: 10px;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+
+        .register-container {
+            width: 100%;
+            max-width: 500px;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
         }
-        .register-container button {
-            padding: 10px;
-            font-size: 1rem;
-            border-radius: 6px;
-            background: #4f8cff;
-            color: #fff;
-            font-weight: bold;
-            border: none;
+
+        .register-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary), #4facfe);
         }
-        .error {
-            color: #f44336;
-            font-weight: bold;
-            margin-top: 18px;
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            font-size: 1.8rem;
+            font-weight: 600;
         }
-        .confirmation {
-            color: #388e3c;
-            font-weight: bold;
-            margin-top: 18px;
+
+        .register-media {
+            margin-bottom: 1.5rem;
+        }
+
+        .register-media img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 4px solid var(--primary);
+            padding: 4px;
+            box-shadow: 0 4px 8px rgba(25, 118, 242, 0.2);
+        }
+
+        video, canvas {
+            width: 100%;
+            max-width: 320px;
+            border-radius: var(--border-radius);
+            border: 2px solid var(--border);
+            margin: 0 auto 1.5rem;
+            background: #f5f5f5;
+            display: block;
+        }
+
+        canvas {
             display: none;
         }
+
+        .security-info {
+            background: rgba(25, 118, 242, 0.1);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            color: var(--text);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .security-info i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .form-group {
+            text-align: left;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(25, 118, 242, 0.1);
+        }
+
+        input[type="password"] {
+            letter-spacing: 1px;
+        }
+
+        button {
+            padding: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--border-radius);
+            background: var(--primary);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(25, 118, 242, 0.2);
+        }
+
+        button i {
+            font-size: 1.1rem;
+        }
+
+        .error {
+            color: var(--error);
+            background: rgba(244, 67, 54, 0.1);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .error i {
+            font-size: 1.2rem;
+        }
+
+        .confirmation {
+            color: var(--success);
+            background: rgba(76, 175, 80, 0.1);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            font-weight: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .confirmation i {
+            font-size: 1.2rem;
+        }
+
+        .password-requirements {
+            text-align: left;
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-top: -0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        @media (max-width: 600px) {
+            .register-container {
+                padding: 1.5rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
+        }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-<div class="register-container">
-    <h2>Register</h2>
-    {% if error %}<p class="error">{{ error }}</p>{% endif %}
-    <div class="register-media">
-        <img src="static/images/webcam image.jpg" alt="Register Illustration" />
+    <div class="register-container">
+        <h2>Create Your Account</h2>
+        
+        {% if error %}
+        <div class="error">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <div class="register-media">
+            <img src="{{ url_for('static', filename='images/webcam image.jpg') }}" alt="Face Registration">
+        </div>
+
+        <div class="security-info">
+            <i class="fas fa-shield-alt"></i>
+            <span>Face registration required for secure authentication</span>
+        </div>
+
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+
+        <form id="registerForm" method="post">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Choose a username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Create a password" required>
+                <div class="password-requirements">
+                    Use at least 8 characters with a mix of letters and numbers
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="roleSelect">Account Type</label>
+                <select id="roleSelect" name="role" required>
+                    <option value="student">Student</option>
+                    <option value="admin">Administrator</option>
+                </select>
+            </div>
+
+            <input type="hidden" name="face_image" id="face_image">
+            <input type="hidden" name="admin_code" id="admin_code">
+
+            <button type="submit" id="registerButton">
+                <i class="fas fa-user-plus"></i>
+                Register Account
+            </button>
+        </form>
+
+        <div class="confirmation" id="confirmationMsg">
+            <i class="fas fa-check-circle"></i>
+            Registration submitted successfully!
+        </div>
     </div>
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <form id="registerForm" method="post">
-        <input name="username" placeholder="Username" required>
-        <input name="password" type="password" placeholder="Password" required>
-        <select name="role" id="roleSelect">
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-        </select>
-        <input type="hidden" name="face_image" id="face_image">
-        <input type="hidden" name="admin_code" id="admin_code">
-        <button type="submit">Capture & Register</button>
-    </form>
-    <div class="confirmation" id="confirmationMsg">Face captured! Registration submitted.</div>
-</div>
-<script>
-    // Prompt for camera access and show video
-    const video = document.getElementById('video');
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => { video.srcObject = stream; })
-        .catch(err => { alert('Camera access denied or not available.'); });
 
-    // On form submit, capture frame and send as base64
-    document.getElementById('registerForm').addEventListener('submit', function(e) {
-        e.preventDefault();
+    <script>
+        const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        document.getElementById('face_image').value = canvas.toDataURL('image/jpeg');
-        this.submit();
-        setTimeout(function() {
-            video.srcObject.getTracks().forEach(track => track.stop());
-            document.getElementById('confirmationMsg').style.display = 'block';
-        }, 200);
-    });
+        const registerForm = document.getElementById('registerForm');
+        const faceImageInput = document.getElementById('face_image');
+        const adminCodeInput = document.getElementById('admin_code');
+        const roleSelect = document.getElementById('roleSelect');
+        const confirmationMsg = document.getElementById('confirmationMsg');
+        const registerButton = document.getElementById('registerButton');
 
-    // Optionally allow admin registration with a secret code
-    document.getElementById('roleSelect').addEventListener('change', function() {
-        if (this.value === 'admin') {
-            let code = prompt('Enter admin registration code:');
-            document.getElementById('admin_code').value = code || '';
-        } else {
-            document.getElementById('admin_code').value = '';
+        // Initialize camera
+        let cameraStream = null;
+
+        async function initCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 }, 
+                        height: { ideal: 480 },
+                        facingMode: 'user' 
+                    } 
+                });
+                video.srcObject = cameraStream;
+            } catch (err) {
+                console.error('Camera access error:', err);
+                alert('Camera access is required for face registration. Please enable camera permissions.');
+            }
         }
-    });
-</script>
+
+        // Handle form submission
+        registerForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Check for admin code if registering as admin
+            if (roleSelect.value === 'admin' && !adminCodeInput.value) {
+                alert('Admin registration requires a valid code');
+                return;
+            }
+
+            // Show loading state
+            registerButton.disabled = true;
+            registerButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+            // Capture face image
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            faceImageInput.value = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Submit form
+            this.submit();
+
+            // Show confirmation (will be replaced by server response)
+            setTimeout(() => {
+                confirmationMsg.style.display = 'flex';
+                registerButton.disabled = false;
+                registerButton.innerHTML = '<i class="fas fa-user-plus"></i> Register Account';
+            }, 500);
+        });
+
+        // Handle role selection change
+        roleSelect.addEventListener('change', function() {
+            if (this.value === 'admin') {
+                const code = prompt('Please enter the administrator registration code:');
+                adminCodeInput.value = code || '';
+                
+                if (!adminCodeInput.value) {
+                    this.value = 'student'; // Revert to student if no code provided
+                }
+            } else {
+                adminCodeInput.value = '';
+            }
+        });
+
+        // Clean up camera stream when leaving page
+        window.addEventListener('beforeunload', () => {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Initialize camera
+        initCamera();
+    </script>
 </body>
 </html>

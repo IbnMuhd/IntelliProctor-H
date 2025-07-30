@@ -1,131 +1,399 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Login - ExamGuard</title>
     <style>
+        :root {
+            --primary: #1976f2;
+            --primary-dark: #1565c0;
+            --secondary: #f5f5f5;
+            --error: #f44336;
+            --success: #4caf50;
+            --text: #333;
+            --text-light: #666;
+            --border: #ddd;
+            --border-radius: 8px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: #f9f9f9;
+            color: var(--text);
+            line-height: 1.6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
         .login-container {
+            width: 100%;
             max-width: 500px;
-            margin: 40px auto;
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
             text-align: center;
-            font-family: 'Segoe UI', Arial, sans-serif;
+            position: relative;
+            overflow: hidden;
         }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 6px;
+            background: linear-gradient(90deg, var(--primary), #4facfe);
+        }
+
+        h2 {
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            font-size: 1.8rem;
+            font-weight: 600;
+        }
+
+        .login-media {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
         .login-media img {
-            width: 10%;
-            max-height: 50px;
-            border-radius: 16px;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
             object-fit: cover;
-            margin-bottom: 16px;
+            border: 4px solid var(--primary);
+            padding: 4px;
+            box-shadow: 0 4px 8px rgba(25, 118, 242, 0.2);
         }
+
         video, canvas {
-            border: 2px solid #333;
-            border-radius: 8px;
-            width: 320px;
-            margin-bottom: 16px;
+            width: 100%;
+            max-width: 320px;
+            border-radius: var(--border-radius);
+            border: 2px solid var(--border);
+            margin-bottom: 1rem;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            background: #f5f5f5;
         }
-        .login-container form {
+
+        canvas {
+            display: none;
+        }
+
+        .security-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 1.5rem;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .security-indicator i {
+            color: var(--success);
+        }
+
+        form {
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-top: 20px;
+            gap: 1.25rem;
         }
-        .login-container input {
-            padding: 10px;
-            font-size: 1rem;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+
+        .form-group {
+            text-align: left;
         }
-        .login-container button {
-            padding: 10px;
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        input, select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
             font-size: 1rem;
-            border-radius: 6px;
-            background: #4f8cff;
-            color: #fff;
-            font-weight: bold;
+            transition: var(--transition);
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(25, 118, 242, 0.1);
+        }
+
+        input[type="password"] {
+            letter-spacing: 1px;
+        }
+
+        button {
+            padding: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: var(--border-radius);
+            background: var(--primary);
+            color: white;
             border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
+
+        button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(25, 118, 242, 0.2);
+        }
+
+        button i {
+            font-size: 1.1rem;
+        }
+
         .error {
-            color: #f44336;
-            font-weight: bold;
-            margin-top: 18px;
+            color: var(--error);
+            background: rgba(244, 67, 54, 0.1);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .error i {
+            font-size: 1.2rem;
+        }
+
+        .register-link {
+            margin-top: 1.5rem;
+            color: var(--text-light);
+        }
+
+        .register-link a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: var(--transition);
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .camera-permission {
+            background: rgba(25, 118, 242, 0.1);
+            padding: 0.75rem;
+            border-radius: var(--border-radius);
+            margin: 1rem 0;
+            color: var(--text);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .camera-permission i {
+            color: var(--primary);
+            font-size: 1.2rem;
+        }
+
+        @media (max-width: 600px) {
+            .login-container {
+                padding: 1.5rem;
+            }
+
+            h2 {
+                font-size: 1.5rem;
+            }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
-<div class="login-container">
-    <h2>Login to Your Account</h2>
-    {% if error %}<p class="error">{{ error }}</p>{% endif %}
+    <div class="login-container">
+        <h2>Secure Login</h2>
+        
+        {% if error %}
+        <div class="error">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ error }}
+        </div>
+        {% endif %}
 
-    <!-- 🔄 Replaced video preview illustration with an image -->
-    <div class="login-media">
-        <img src="static/images/webcam image.jpg" alt="video_feed" />
+        <div class="login-media">
+            <img src="{{ url_for('static', filename='images/webcam image.jpg') }}" alt="Face Verification Preview">
+        </div>
+
+        <div class="security-indicator">
+            <i class="fas fa-lock"></i>
+            <span>Secure connection • Face verification enabled</span>
+        </div>
+
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+
+        <div class="camera-permission" id="cameraPermission" style="display: none;">
+            <i class="fas fa-camera"></i>
+            <span>Please allow camera access for face verification</span>
+        </div>
+
+        <form id="loginForm" method="post">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" placeholder="Enter your username" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="Enter your password" required>
+            </div>
+
+            <div class="form-group">
+                <label for="roleSelect">Login as</label>
+                <select id="roleSelect" name="role" required>
+                    <option value="student">Student</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+
+            <input type="hidden" name="face_image" id="face_image">
+
+            <button type="submit" id="loginButton">
+                <i class="fas fa-sign-in-alt"></i>
+                <span id="buttonText">Login with Face Verification</span>
+            </button>
+        </form>
+
+        <div class="register-link">
+            Don't have an account? <a href="{{ url_for('register') }}">Register here</a>
+        </div>
     </div>
 
-    <!-- 📷 Webcam video preview -->
-    <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none;"></canvas>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const loginForm = document.getElementById('loginForm');
+        const faceImageInput = document.getElementById('face_image');
+        const roleSelect = document.getElementById('roleSelect');
+        const buttonText = document.getElementById('buttonText');
+        const cameraPermission = document.getElementById('cameraPermission');
+        const loginButton = document.getElementById('loginButton');
 
-    <form id="loginForm" method="post">
-        <input name="username" placeholder="Username" required>
-        <input name="password" type="password" placeholder="Password" required>
-        <select name="role" id="roleSelect">
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-        </select>
-        <input type="hidden" name="face_image" id="face_image">
-        <button type="submit">Login (with Face)</button>
-    </form>
+        // Initialize camera state
+        let cameraStream = null;
+        let cameraAccessGranted = false;
 
-    <div style="margin-top:18px;">
-        <a href="{{ url_for('register') }}">Don't have an account? Register here</a>
-    </div>
-</div>
-
-<script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const loginForm = document.getElementById('loginForm');
-    const faceImageInput = document.getElementById('face_image');
-    const roleSelect = document.getElementById('roleSelect');
-
-    // Show/hide video feed based on role
-    function updateVideoVisibility() {
-        if (roleSelect.value === 'admin') {
-            video.style.display = 'none';
-            canvas.style.display = 'none';
-        } else {
-            video.style.display = '';
-            canvas.style.display = 'none';
+        // Update UI based on role selection
+        function updateUIForRole() {
+            if (roleSelect.value === 'admin') {
+                video.style.display = 'none';
+                canvas.style.display = 'none';
+                cameraPermission.style.display = 'none';
+                buttonText.textContent = 'Login as Admin';
+                loginButton.innerHTML = '<i class="fas fa-user-shield"></i><span id="buttonText">Login as Admin</span>';
+            } else {
+                video.style.display = 'block';
+                canvas.style.display = 'none';
+                buttonText.textContent = 'Login with Face Verification';
+                loginButton.innerHTML = '<i class="fas fa-sign-in-alt"></i><span id="buttonText">Login with Face Verification</span>';
+                if (!cameraAccessGranted) {
+                    cameraPermission.style.display = 'flex';
+                }
+            }
         }
-    }
-    roleSelect.addEventListener('change', updateVideoVisibility);
-    updateVideoVisibility();
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            video.srcObject = stream;
-        })
-        .catch(err => {
-            alert('Camera access denied or not available.');
+        // Request camera access
+        async function initCamera() {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 }, 
+                        height: { ideal: 480 },
+                        facingMode: 'user' 
+                    } 
+                });
+                video.srcObject = cameraStream;
+                cameraAccessGranted = true;
+                cameraPermission.style.display = 'none';
+            } catch (err) {
+                console.error('Camera access error:', err);
+                cameraPermission.style.display = 'flex';
+                cameraPermission.innerHTML = `
+                    <i class="fas fa-camera-slash"></i>
+                    <span>Camera access required for face verification</span>
+                `;
+            }
+        }
+
+        // Handle form submission
+        loginForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            
+            if (roleSelect.value === 'admin') {
+                // No face image for admin
+                faceImageInput.value = '';
+                loginForm.submit();
+                return;
+            }
+
+            if (!cameraStream) {
+                alert('Please allow camera access to continue with face verification.');
+                return;
+            }
+
+            // Show loading state
+            loginButton.disabled = true;
+            loginButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying Face...';
+
+            // Capture face image
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            faceImageInput.value = canvas.toDataURL('image/jpeg', 0.8);
+            
+            // Submit form
+            loginForm.submit();
         });
 
-    loginForm.addEventListener('submit', function (e) {
-        e.preventDefault();
-        if (roleSelect.value === 'admin') {
-            // No face image for admin
-            faceImageInput.value = '';
-            loginForm.submit();
-            return;
-        }
-        if (!video.srcObject || video.readyState !== 4) {
-            alert('Camera not ready.');
-            return;
-        }
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-        faceImageInput.value = canvas.toDataURL('image/jpeg');
-        loginForm.submit();
-    });
-</script>
+        // Clean up camera stream when leaving page
+        window.addEventListener('beforeunload', () => {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+            }
+        });
+
+        // Initialize
+        roleSelect.addEventListener('change', updateUIForRole);
+        updateUIForRole();
+        initCamera();
+    </script>
 </body>
 </html>

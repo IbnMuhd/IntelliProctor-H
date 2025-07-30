@@ -2,8 +2,26 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ExamGuard - Home</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamGuard - Secure Online Proctoring</title>
     <style>
+        :root {
+            --primary: #1976f2;
+            --primary-dark: #155ec1;
+            --secondary: #f1f1f1;
+            --secondary-dark: #ddd;
+            --text: #333;
+            --text-light: #555;
+            --text-lighter: #888;
+            --background: #fff;
+            --section-light: #f9f9f9;
+            --about-bg: #f7faff;
+            --contact-bg: #fffbe7;
+            --shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
         * {
             box-sizing: border-box;
             margin: 0;
@@ -11,9 +29,10 @@
         }
 
         body {
-            font-family: 'Segoe UI', sans-serif;
-            background-color: #fff;
-            color: #333;
+            font-family: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
         }
 
         /* Navigation Bar */
@@ -21,182 +40,323 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 60px;
-            background-color: #fff;
-            border-bottom: 1px solid #eee;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            padding: 1.25rem 5%;
+            background-color: var(--background);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
         }
 
         .logo {
-            font-weight: bold;
-            font-size: 1.2rem;
+            font-weight: 700;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .logo::before {
-            content: "♦";
-            margin-right: 6px;
-            color: #000;
+            content: "🔒";
+            font-size: 1.2em;
         }
 
         .nav-links {
             display: flex;
-            gap: 20px;
+            gap: 1.5rem;
             align-items: center;
         }
 
         .nav-links a {
             text-decoration: none;
-            color: #333;
+            color: var(--text);
             font-weight: 500;
+            transition: var(--transition);
+            padding: 0.5rem 0;
+            position: relative;
         }
 
-        .nav-links .btn {
-            padding: 10px 18px;
-            border-radius: 6px;
-            font-weight: bold;
-            border: none;
+        .nav-links a:not(.btn):hover {
+            color: var(--primary);
+        }
+
+        .nav-links a:not(.btn)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background-color: var(--primary);
+            transition: var(--transition);
+        }
+
+        .nav-links a:not(.btn):hover::after {
+            width: 100%;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-weight: 600;
             text-decoration: none;
-            transition: all 0.3s ease;
+            transition: var(--transition);
+            display: inline-block;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            font-size: 0.95rem;
         }
 
         .btn-login {
-            background-color: #1976f2;
+            background-color: var(--primary);
             color: white;
         }
 
-        .btn-register {
-            background-color: #f1f1f1;
-            color: black;
+        .btn-login:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(25, 118, 242, 0.2);
         }
 
-        .btn-login:hover {
-            background-color: #155ec1;
+        .btn-register {
+            background-color: var(--secondary);
+            color: var(--text);
         }
 
         .btn-register:hover {
-            background-color: #ddd;
+            background-color: var(--secondary-dark);
+            transform: translateY(-2px);
         }
 
         /* Hero Section */
         .hero {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            flex-direction: column;
             text-align: center;
-            padding: 60px 20px;
-            background-color: #f9f9f9;
+            padding: 4rem 5%;
+            background: linear-gradient(135deg, #f5f7ff 0%, #f9f9f9 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50px;
+            right: -50px;
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(25, 118, 242, 0.1) 0%, transparent 70%);
+            z-index: 0;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            position: relative;
+            z-index: 1;
         }
 
         .hero img {
             max-width: 100%;
             height: auto;
-            border-radius: 12px;
-            margin-bottom: 30px;
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(0, 0, 0, 0.05);
         }
 
         .hero h1 {
             font-size: 2.8rem;
-            font-weight: bold;
-            margin-bottom: 10px;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+            color: var(--text);
         }
 
         .hero p {
-            font-size: 1.1rem;
-            color: #555;
-            margin-bottom: 25px;
+            font-size: 1.2rem;
+            color: var(--text-light);
+            margin-bottom: 2rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
         }
 
         .hero-buttons {
             display: flex;
-            gap: 15px;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
         }
 
-        .hero-buttons a {
-            padding: 12px 20px;
-            font-size: 1rem;
-            border-radius: 6px;
-            font-weight: bold;
-            text-decoration: none;
-            transition: 0.3s ease;
+        /* Content Sections */
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 5%;
         }
 
-        .hero-buttons .btn-login {
-            background-color: #1976f2;
-            color: white;
-        }
-
-        .hero-buttons .btn-register {
-            background-color: #f1f1f1;
-            color: black;
-        }
-
-        .hero-buttons .btn-login:hover {
-            background-color: #155ec1;
-        }
-
-        .hero-buttons .btn-register:hover {
-            background-color: #ddd;
-        }
-
-        /* About and Contact Sections */
         section {
-            padding: 48px 16px;
-            border-radius: 10px;
-            margin: 32px auto;
-            max-width: 700px;
+            padding: 3rem 0;
+            margin: 2rem 0;
         }
 
         #about {
-            background: #f7faff;
+            background-color: var(--about-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #about::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--primary), #4facfe);
         }
 
         #contact {
-            background: #fffbe7;
+            background-color: var(--contact-bg);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
         }
 
         h2 {
-            margin-bottom: 12px;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            position: relative;
+            display: inline-block;
+        }
+
+        h2::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+            width: 50px;
+            height: 3px;
+            background-color: var(--primary);
+            border-radius: 3px;
+        }
+
+        p {
+            margin-bottom: 1.5rem;
         }
 
         ul {
-            margin: 18px 0 0 18px;
+            margin: 1.5rem 0 1.5rem 2rem;
         }
 
+        li {
+            margin-bottom: 0.75rem;
+            position: relative;
+        }
+
+        li::before {
+            content: '•';
+            color: var(--primary);
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1em;
+        }
+
+        /* Contact Form */
         form {
-            margin-top: 18px;
+            margin-top: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
         }
 
         input, textarea {
             width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
+            padding: 0.75rem 1rem;
+            border-radius: var(--border-radius);
+            border: 1px solid #ddd;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(25, 118, 242, 0.1);
+        }
+
+        textarea {
+            min-height: 120px;
+            resize: vertical;
         }
 
         /* Footer */
-        .footer {
-            background-color: #f1f1f1;
-            padding: 20px 0;
+        footer {
+            background-color: var(--secondary);
+            padding: 2rem 0;
             text-align: center;
-            color: #888;
-            font-size: 0.9rem;
+            margin-top: 3rem;
+            color: var(--text-lighter);
         }
 
-        /* Media Queries */
+        /* Responsive Design */
         @media (max-width: 768px) {
             nav {
                 flex-direction: column;
-                align-items: flex-start;
-                padding: 20px;
+                align-items: center;
+                padding: 1rem;
+            }
+
+            .nav-links {
+                margin-top: 1rem;
+                gap: 1rem;
             }
 
             .hero h1 {
-                font-size: 2rem;
+                font-size: 2.2rem;
+            }
+
+            .hero p {
+                font-size: 1.1rem;
+            }
+
+            section {
+                padding: 2rem 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 {
+                font-size: 1.8rem;
+            }
+
+            .hero-buttons {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .hero-buttons .btn {
+                width: 100%;
+            }
+
+            #about, #contact {
+                padding: 1.5rem;
             }
         }
     </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
 
@@ -205,67 +365,98 @@
         <div class="logo">ExamGuard</div>
         <div class="nav-links">
             <a href="#">Home</a>
-            <a href="#">About</a>
-            <a href="#">Contact</a>
-            <a href="{{ url_for('login') }}" class="btn btn-login">Login</a>
-            <a href="{{ url_for('register') }}" class="btn btn-register">Register</a>
+            <a href="#about">About</a>
+            <a href="#contact">Contact</a>
+            <a href="{{ url_for('login') }}" class="btn btn-login">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </a>
+            <a href="{{ url_for('register') }}" class="btn btn-register">
+                <i class="fas fa-user-plus"></i> Register
+            </a>
         </div>
     </nav>
 
     <!-- Hero Section -->
     <div class="container">
-      <section class="hero">
-          <img src="{{ url_for('static', filename='images/home_banner_image.avif') }}" alt="Student sitting with laptop">
-          <h1>Welcome to ExamGuard</h1>
-          <p>Your trusted partner for secure and reliable online assessments.</p>
-          <div class="hero-buttons">
-              <a href="{{ url_for('login') }}" class="btn-login">Login</a>
-              <a href="{{ url_for('register') }}" class="btn-register">Register</a>
-          </div>
-      </section>
+        <section class="hero">
+            <div class="hero-content">
+                <img src="{{ url_for('static', filename='images/home_banner_image.avif') }}" alt="Student taking online exam">
+                <h1>Secure Online Proctoring with ExamGuard</h1>
+                <p>Advanced AI-powered monitoring to ensure exam integrity for your online assessments</p>
+                <div class="hero-buttons">
+                    <a href="{{ url_for('login') }}" class="btn btn-login">
+                        <i class="fas fa-sign-in-alt"></i> Login
+                    </a>
+                    <a href="{{ url_for('register') }}" class="btn btn-register">
+                        <i class="fas fa-user-plus"></i> Create Account
+                    </a>
+                </div>
+            </div>
+        </section>
     </div>
 
     <!-- About Section -->
     <div class="container">
-      <section id="about">
-        <h2 style="margin-bottom: 12px;">About ExamGuard</h2>
-        <p>
-          ExamGuard is an advanced AI-powered proctoring platform designed to ensure exam integrity for online assessments.<br>
-          It features real-time face verification, behavior monitoring, audio and screen activity detection, and instant alerts for suspicious actions.<br>
-          The system provides dedicated dashboards for both students and administrators, making online exams secure and user-friendly.
-        </p>
-        <ul style="margin: 18px 0 0 18px;">
-          <li>Face registration and verification using AI</li>
-          <li>Real-time proctoring (multiple faces, head movement, audio, screen activity)</li>
-          <li>Admin and student dashboards</li>
-          <li>Automated grading and persistent alert history</li>
-        </ul>
-      </section>
+        <section id="about">
+            <h2>About ExamGuard</h2>
+            <p>
+                ExamGuard is an advanced AI-powered proctoring platform designed to ensure exam integrity for online assessments. 
+                Our system provides comprehensive monitoring solutions that give educators confidence in the validity of their online exams.
+            </p>
+            <p>
+                With real-time face verification, behavior monitoring, and activity detection, ExamGuard helps maintain academic integrity 
+                while providing a seamless experience for both students and administrators.
+            </p>
+            <h3 style="margin: 1.5rem 0 1rem; font-size: 1.25rem;">Key Features:</h3>
+            <ul>
+                <li><strong>AI-Powered Face Recognition:</strong> Secure identity verification using facial recognition technology</li>
+                <li><strong>Real-Time Monitoring:</strong> Detection of multiple faces, suspicious head movements, and unusual audio</li>
+                <li><strong>Screen Activity Tracking:</strong> Monitoring for unauthorized applications or browser tabs</li>
+                <li><strong>Comprehensive Dashboards:</strong> Intuitive interfaces for both students and administrators</li>
+                <li><strong>Automated Reporting:</strong> Detailed logs of all proctoring events and alerts</li>
+            </ul>
+        </section>
     </div>
 
     <!-- Contact Section -->
     <div class="container">
-      <section id="contact">
-        <h2 style="margin-bottom: 12px;">Contact Us</h2>
-        <p>
-          For support or inquiries, please contact us at:<br>
-          <strong>Email:</strong> support@examguard.com<br>
-          <strong>Phone:</strong> +2348162656453 / +2348028657294
-        </p>
-        <!-- <form method="post" action="/contact" style="margin-top: 18px;"> -->
-          <input type="text" name="name" placeholder="Your Name" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
-          <input type="email" name="email" placeholder="Your Email" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;">
-          <textarea name="message" placeholder="Your Message" required style="width: 100%; padding: 8px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #ccc;"></textarea>
-          <button type="submit" class="btn btn-login">Send Message</button>
-        <!-- </form> -->
-      </section>
+        <section id="contact">
+            <h2>Contact Us</h2>
+            <p>
+                Have questions or need support? Our team is here to help you with any inquiries about our proctoring solutions.
+            </p>
+            <div style="margin: 1.5rem 0;">
+                <p><i class="fas fa-envelope"></i> <strong>Email:</strong> support@examguard.com</p>
+                <p><i class="fas fa-phone"></i> <strong>Phone:</strong> +234 816 265 6453 / +234 802 865 7294</p>
+            </div>
+            
+            <form method="post" action="/contact">
+                <div class="form-group">
+                    <input type="text" name="name" placeholder="Your Name" required>
+                </div>
+                <div class="form-group">
+                    <input type="email" name="email" placeholder="Your Email" required>
+                </div>
+                <div class="form-group">
+                    <textarea name="message" placeholder="Your Message" required></textarea>
+                </div>
+                <button type="submit" class="btn btn-login">
+                    <i class="fas fa-paper-plane"></i> Send Message
+                </button>
+            </form>
+        </section>
     </div>
 
     <!-- Footer -->
-    <footer class="footer">
-      <div class="container" style="text-align:center; padding: 18px 0; color: #888; font-size: 1rem;">
-        &copy; {{ current_year or 2025 }} ExamGuard. All rights reserved.
-      </div>
+    <footer>
+        <div class="container">
+            <p>&copy; {{ current_year or 2025 }} ExamGuard. All rights reserved.</p>
+            <div style="margin-top: 1rem;">
+                <a href="#" style="color: var(--text-lighter); margin: 0 0.5rem;"><i class="fab fa-twitter"></i></a>
+                <a href="#" style="color: var(--text-lighter); margin: 0 0.5rem;"><i class="fab fa-facebook"></i></a>
+                <a href="#" style="color: var(--text-lighter); margin: 0 0.5rem;"><i class="fab fa-linkedin"></i></a>
+            </div>
+        </div>
     </footer>
 
 </body>
