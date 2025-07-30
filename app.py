@@ -51,6 +51,13 @@ limiter = Limiter(
 # Database configuration
 DATABASE = "proctoring.db"
 
+
+# Define get_db before any function that uses it
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
 # Ensure exams table exists
 def ensure_exams_table():
     conn = get_db()
@@ -63,11 +70,6 @@ def ensure_exams_table():
     conn.commit()
     conn.close()
 ensure_exams_table()
-
-def get_db():
-    conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row
-    return conn
 
 def init_db():
     conn = get_db()
@@ -117,13 +119,21 @@ def init_db():
 
 init_db()
 
+
 # Global objects
 camera = None
-face_auth = None
-behavior_monitor = None
+face_auth = FaceAuthenticator()  # Initialize once
+behavior_monitor = None  # Will be initialized once below
 frame_queue = queue.Queue(maxsize=10)
 audio_alert = False
 registered_face_embedding = None
+
+# Initialize BehaviorMonitor once, embedding will be set per student
+try:
+    behavior_monitor = BehaviorMonitor(None)
+except Exception as e:
+    import traceback
+    print('Error initializing BehaviorMonitor at startup:', traceback.format_exc())
 
 # In-memory storage for demo
 QUESTIONS = []
@@ -167,11 +177,13 @@ def reset_violations(user=None):
     else:
         VIOLATION_COUNTS = {}
 
+
+# Only update embedding and camera, do not reload models
 def initialize_system(registered_embedding=None):
-    global camera, face_auth, behavior_monitor, registered_face_embedding
+    global camera, registered_face_embedding, behavior_monitor
     try:
-        camera = Camera()
-        face_auth = FaceAuthenticator()
+        if camera is None:
+            camera = Camera()
         frame = None
         # Warm up the camera: try to get a valid frame up to 10 times
         for _ in range(10):
@@ -182,10 +194,14 @@ def initialize_system(registered_embedding=None):
         if frame is None:
             # Camera could not be accessed or no frames available
             return jsonify({"status": "error", "message": "Camera access denied or not available. Please check your webcam connection and permissions."}), 500
-        # Do not verify face here, just store embedding for continuous check
+        # Set embedding for this session
         if registered_embedding is not None:
             registered_face_embedding = registered_embedding
-        behavior_monitor = BehaviorMonitor(registered_face_embedding)
+            # Update embedding in behavior_monitor if method exists
+            if hasattr(behavior_monitor, 'set_registered_embedding'):
+                behavior_monitor.set_registered_embedding(registered_embedding)
+            elif hasattr(behavior_monitor, 'registered_embedding'):
+                behavior_monitor.registered_embedding = registered_embedding
     except Exception as e:
         import traceback
         print('Error in initialize_system:', traceback.format_exc())
@@ -217,13 +233,14 @@ def process_frame(user=None, role=None):
                         if not result['verified']:
                             if increment_violation(user or 'unknown', 'face_mismatch'):
                                 add_alert(user or 'unknown', 'face_mismatch', frame=frame)
-                    behavior_results = behavior_monitor.analyze_frame(frame)
-                    frame = behavior_monitor.draw_results(frame, behavior_results)
-                    # Log all BehaviorMonitor alerts (all are relevant)
-                    for event, triggered in behavior_results.items():
-                        if triggered:
-                            if increment_violation(user or 'unknown', event):
-                                add_alert(user or 'unknown', event, frame=frame)
+                    if behavior_monitor is not None:
+                        behavior_results = behavior_monitor.analyze_frame(frame)
+                        frame = behavior_monitor.draw_results(frame, behavior_results)
+                        # Log all BehaviorMonitor alerts (all are relevant)
+                        for event, triggered in behavior_results.items():
+                            if triggered:
+                                if increment_violation(user or 'unknown', event):
+                                    add_alert(user or 'unknown', event, frame=frame)
                 # --- Always update the video feed for smoothness ---
                 if not frame_queue.full():
                     frame_queue.put(frame)
@@ -596,40 +613,49 @@ def login():
         conn = get_db()
         user = conn.execute("SELECT * FROM users WHERE username=?", (username,)).fetchone()
         conn.close()
-        if user and check_password_hash(user['password_hash'], password):
-            logging.info(f"Password verified for user: {username}")
-            if user['role'] == 'admin':
-                session['username'] = user['username']
-                session['role'] = user['role']
-                logging.info(f"Redirecting {username} to admin dashboard.")
-                return redirect(url_for('admin'))
-            elif face_image_b64:
-                if ',' in face_image_b64:
-                    face_image_b64 = face_image_b64.split(',')[1]
-                try:
-                    img_bytes = b64decode(face_image_b64)
-                    img = Image.open(BytesIO(img_bytes)).convert('RGB')
-                    frame = np.array(img)
-                    frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                    stored_embedding = get_face_embedding(username)
-                    result = face_auth.verify_face(frame, stored_embedding)
-                    logging.info(f"Face verification result for {username}: {result}")
-                    if not result['verified']:
-                        logging.warning(f"Face not verified for {username}")
-                        return render_template('login.html', error=result['message'])
-                    session['username'] = user['username']
-                    session['role'] = user['role']
-                    logging.info(f"Redirecting {username} to dashboard: {user['role']}")
-                    return redirect(url_for('student'))
-                except Exception as e:
-                    logging.error(f"Image decode error for {username}: {e}")
-                    return render_template('login.html', error=f"Image decode error: {e}")
-            else:
-                logging.warning(f"No face image captured for {username}")
-                return render_template('login.html', error="No face image captured. Please allow camera access.")
-        else:
+        if not user or not check_password_hash(user['password_hash'], password):
             logging.warning(f"Invalid credentials for {username}")
             return render_template('login.html', error="Invalid credentials")
+
+        # Admin: only username and password required, never allow face login as admin
+        if user['role'] == 'admin':
+            session['username'] = user['username']
+            session['role'] = user['role']
+            logging.info(f"Redirecting {username} to admin dashboard.")
+            return redirect(url_for('admin'))
+
+        # Student: require username, password, and correct face embedding
+        if user['role'] == 'student':
+            if not face_image_b64:
+                logging.warning(f"No face image captured for {username}")
+                return render_template('login.html', error="No face image captured. Please allow camera access.")
+            if ',' in face_image_b64:
+                face_image_b64 = face_image_b64.split(',')[1]
+            try:
+                img_bytes = b64decode(face_image_b64)
+                img = Image.open(BytesIO(img_bytes)).convert('RGB')
+                frame = np.array(img)
+                frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                stored_embedding = get_face_embedding(username)
+                if stored_embedding is None:
+                    logging.warning(f"No face embedding found for {username}")
+                    return render_template('login.html', error="No face embedding found for this user. Please contact admin.")
+                result = face_auth.verify_face(frame, stored_embedding)
+                logging.info(f"Face verification result for {username}: {result}")
+                if not result['verified']:
+                    logging.warning(f"Face not verified for {username}")
+                    return render_template('login.html', error=result['message'])
+                session['username'] = user['username']
+                session['role'] = user['role']
+                logging.info(f"Redirecting {username} to dashboard: {user['role']}")
+                return redirect(url_for('student'))
+            except Exception as e:
+                logging.error(f"Image decode error for {username}: {e}")
+                return render_template('login.html', error=f"Image decode error: {e}")
+
+        # Fallback: unknown role
+        logging.warning(f"Unknown role for {username}")
+        return render_template('login.html', error="Unknown user role.")
     return render_template('login.html')
 
 @app.route('/logout')
