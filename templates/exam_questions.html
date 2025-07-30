@@ -1,75 +1,371 @@
 {% extends "base.html" %}
-{% block title %}Exam Questions - Proctoring{% endblock %}
+{% block title %}{{ exam_title }} - ExamGuard{% endblock %}
+
 {% block content %}
-<div style="max-width:700px;margin:24px auto 0 auto;">
-  <div style="background:#eaf2ff;border-radius:8px;padding:16px 20px 10px 20px;margin-bottom:18px;text-align:center;">
-    <span style="font-size:1.1em;color:#2356c7;font-weight:600;">Course Code:</span> <span style="font-size:1.1em;">{{ course_code }}</span>
-    <span style="margin-left:18px;font-size:1.1em;color:#2356c7;font-weight:600;">Exam:</span> <span style="font-size:1.1em;">{{ exam_title }}</span>
-  </div>
-</div>
-<h2>Exam Questions</h2>
-<div id="timer" style="font-size:1.2em; color:#d9534f; margin-bottom:10px;"></div>
-<div id="progress" style="font-size:1em; color:#333; margin-bottom:10px;"></div>
-<div id="warning" style="display:none; color:#b85c00; font-weight:bold; margin-bottom:10px;">Less than 1 minute left! Please finish and submit your exam.</div>
-{% if submitted %}
-    <div class="success">
-        <h3>Thank you for submitting your exam!</h3>
-        <p>Your score: <strong>{{ score }}/{{ total }}</strong></p>
-    </div>
-{% else %}
-    <form id="examForm" method="post">
-        <div id="questionsSection">
-        {% for q in questions %}
-        <div style="margin-bottom:18px; background: #fff; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); padding: 18px 16px;">
-            <p><strong>Q{{ loop.index }}. {{ q.question }}</strong></p>
-            {% for opt in [q.option1, q.option2, q.option3, q.option4] %}
-            <label style="display:block; margin-left:16px;">
-                <input type="radio" name="q{{ loop.index0 }}" value="{{ opt }}" required> {{ opt }}
-            </label>
-            {% endfor %}
-        </div>
-        {% endfor %}
-        <button type="submit" class="btn btn-login">Submit</button>
-        </div>
-    </form>
-    <script>
-    let duration = {{ remaining|default(duration|default(30)*60) }}; // seconds left for this student
-    let timerDisplay = document.getElementById('timer');
-    let form = document.getElementById('examForm');
-    let warningShown = false;
-    let interval = setInterval(function() {
-        let min = Math.floor(duration / 60);
-        let sec = duration % 60;
-        timerDisplay.textContent = `Time Left: ${min}:${sec.toString().padStart(2, '0')}`;
-        if (duration === 60 && !warningShown) {
-            document.getElementById('warning').style.display = 'block';
-            warningShown = true;
-            alert('Less than 1 minute left! Please finish and submit your exam.');
-        }
-        if (duration <= 0) {
-            clearInterval(interval);
-            form.submit();
-        }
-        duration--;
-    }, 1000);
-    // Progress display
-    function updateProgress() {
-        let total = document.querySelectorAll('#questionsSection input[type=radio][value]').length / 4;
-        let answered = 0;
-        for (let i = 0; i < total; i++) {
-            let name = `q${i}`;
-            if (document.querySelector(`input[name='${name}']:checked`)) answered++;
-        }
-        document.getElementById('progress').textContent = `Answered: ${answered} / ${total}`;
+<style>
+    :root {
+        --primary: #1976f2;
+        --primary-light: #eaf2ff;
+        --primary-dark: #1565c0;
+        --error: #d9534f;
+        --warning: #b85c00;
+        --success: #28a745;
+        --text-dark: #333;
+        --text-medium: #555;
+        --text-light: #777;
+        --border-radius: 8px;
+        --shadow-sm: 0 1px 4px rgba(0,0,0,0.04);
+        --shadow-md: 0 2px 8px rgba(0,0,0,0.15);
+        --transition: all 0.3s ease;
     }
-    document.querySelectorAll('#questionsSection input[type=radio]').forEach(el => {
-        el.addEventListener('change', updateProgress);
-    });
-    updateProgress();
-    </script>
-{% endif %}
-<div id="proctorCamera" style="display:block; position:fixed; bottom:24px; right:24px; z-index:1000; background:#fff; border-radius:10px; box-shadow:0 2px 8px rgba(0,0,0,0.15); padding:8px;">
-    <img id="proctorFeed" src="{{ url_for('video_feed') }}" alt="Proctoring Camera" style="width:180px; border-radius:8px; border:2px solid #4f8cff;">
-    <div style="font-size:0.9em; color:#555; margin-top:4px;">Proctoring Active</div>
+
+    .exam-container {
+        max-width: 800px;
+        margin: 2rem auto;
+        padding: 0 1.5rem;
+    }
+
+    .exam-header {
+        background: var(--primary-light);
+        border-radius: var(--border-radius);
+        padding: 1.25rem;
+        margin-bottom: 2rem;
+        text-align: center;
+        border-left: 4px solid var(--primary);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .exam-meta {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .exam-meta span {
+        font-weight: 600;
+        color: var(--primary-dark);
+    }
+
+    .exam-title {
+        font-size: 1.8rem;
+        color: var(--text-dark);
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .status-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: white;
+        padding: 1rem;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 1.5rem;
+    }
+
+    #timer {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--error);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    #progress {
+        font-size: 1rem;
+        color: var(--text-dark);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    #warning {
+        display: none;
+        background: rgba(184, 92, 0, 0.1);
+        color: var(--warning);
+        padding: 0.75rem 1rem;
+        border-radius: var(--border-radius);
+        margin-bottom: 1.5rem;
+        font-weight: 600;
+        align-items: center;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+
+    .question-card {
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-sm);
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        transition: var(--transition);
+    }
+
+    .question-card:hover {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .question-text {
+        font-weight: 600;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+        color: var(--text-dark);
+    }
+
+    .option-label {
+        display: block;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.5rem;
+        border-radius: var(--border-radius);
+        border: 1px solid #e0e0e0;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .option-label:hover {
+        background: var(--primary-light);
+        border-color: var(--primary);
+    }
+
+    .submit-btn {
+        width: 100%;
+        padding: 0.75rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: var(--border-radius);
+        background: var(--primary);
+        color: white;
+        border: none;
+        cursor: pointer;
+        transition: var(--transition);
+        margin-top: 1rem;
+    }
+
+    .submit-btn:hover {
+        background: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(25, 118, 242, 0.2);
+    }
+
+    .submission-success {
+        background: rgba(40, 167, 69, 0.1);
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        text-align: center;
+        margin-bottom: 2rem;
+        border-left: 4px solid var(--success);
+    }
+
+    .submission-success h3 {
+        color: var(--success);
+        margin-bottom: 0.5rem;
+    }
+
+    .proctor-camera {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 1000;
+        background: white;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-md);
+        padding: 0.75rem;
+        border: 2px solid var(--primary);
+    }
+
+    .proctor-status {
+        font-size: 0.9rem;
+        color: var(--primary-dark);
+        font-weight: 600;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .exam-container {
+            padding: 0 1rem;
+        }
+        
+        .exam-meta {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .proctor-camera {
+            width: 150px;
+            bottom: 16px;
+            right: 16px;
+        }
+    }
+</style>
+
+<div class="exam-container">
+    <h1 class="exam-title">Exam Questions</h1>
+    
+    <div class="exam-header">
+        <div class="exam-meta">
+            <div><span>Course:</span> {{ course_code }}</div>
+            <div><span>Exam:</span> {{ exam_title }}</div>
+        </div>
+    </div>
+
+    <div class="status-bar">
+        <div id="timer">
+            <i class="fas fa-clock"></i>
+            <span id="time-display">00:00</span>
+        </div>
+        <div id="progress">
+            <i class="fas fa-list-check"></i>
+            <span id="progress-text">0/0 answered</span>
+        </div>
+    </div>
+
+    <div id="warning" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span>Less than 1 minute left! Please finish and submit your exam.</span>
+    </div>
+
+    {% if submitted %}
+        <div class="submission-success">
+            <h3>Thank you for submitting your exam!</h3>
+            <p>Your score: <strong>{{ score }}/{{ total }}</strong></p>
+        </div>
+    {% else %}
+        <form id="examForm" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div id="questionsSection">
+                {% for q in questions %}
+                <div class="question-card">
+                    <div class="question-text">Q{{ loop.index }}. {{ q.question }}</div>
+                    {% for opt in [q.option1, q.option2, q.option3, q.option4] %}
+                    <label class="option-label">
+                        <input type="radio" name="q{{ loop.index0 }}" value="{{ opt }}" required>
+                        {{ opt }}
+                    </label>
+                    {% endfor %}
+                </div>
+                {% endfor %}
+                
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i>
+                    Submit Exam
+                </button>
+            </div>
+        </form>
+    {% endif %}
 </div>
+
+<div class="proctor-camera">
+    <img id="proctorFeed" src="{{ url_for('video_feed') }}" alt="Proctoring Camera" style="width:180px; border-radius:6px;">
+    <div class="proctor-status">
+        <i class="fas fa-shield-alt"></i>
+        Proctoring Active
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Timer functionality
+        let duration = {{ remaining|default(duration|default(30)*60 }}; // seconds left
+        const timerDisplay = document.getElementById('time-display');
+        const progressText = document.getElementById('progress-text');
+        const warningElement = document.getElementById('warning');
+        const examForm = document.getElementById('examForm');
+        let warningShown = false;
+
+        // Update timer every second
+        const timerInterval = setInterval(updateTimer, 1000);
+        updateTimer(); // Initial call
+
+        function updateTimer() {
+            const minutes = Math.floor(duration / 60);
+            const seconds = duration % 60;
+            timerDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            // Show warning when 1 minute left
+            if (duration === 60 && !warningShown) {
+                warningElement.style.display = 'flex';
+                warningShown = true;
+                
+                // Create modal-style alert
+                const alertDiv = document.createElement('div');
+                alertDiv.style.position = 'fixed';
+                alertDiv.style.top = '0';
+                alertDiv.style.left = '0';
+                alertDiv.style.width = '100%';
+                alertDiv.style.height = '100%';
+                alertDiv.style.backgroundColor = 'rgba(0,0,0,0.5)';
+                alertDiv.style.display = 'flex';
+                alertDiv.style.justifyContent = 'center';
+                alertDiv.style.alignItems = 'center';
+                alertDiv.style.zIndex = '2000';
+                
+                const alertContent = document.createElement('div');
+                alertContent.style.background = 'white';
+                alertContent.style.padding = '2rem';
+                alertContent.style.borderRadius = '8px';
+                alertContent.style.maxWidth = '500px';
+                alertContent.style.width = '90%';
+                alertContent.style.textAlign = 'center';
+                
+                alertContent.innerHTML = `
+                    <div style="font-size: 1.5rem; color: var(--warning); margin-bottom: 1rem;">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3 style="margin-bottom: 1rem;">Time Almost Up!</h3>
+                    <p style="margin-bottom: 1.5rem;">Less than 1 minute remaining. Please finish and submit your exam.</p>
+                    <button style="padding: 0.75rem 1.5rem; background: var(--primary); color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        OK, I Understand
+                    </button>
+                `;
+                
+                alertDiv.appendChild(alertContent);
+                document.body.appendChild(alertDiv);
+                
+                // Close modal when button clicked
+                alertContent.querySelector('button').addEventListener('click', function() {
+                    document.body.removeChild(alertDiv);
+                });
+            }
+            
+            // Auto-submit when time expires
+            if (duration <= 0) {
+                clearInterval(timerInterval);
+                examForm.submit();
+            }
+            duration--;
+        }
+
+        // Progress tracking
+        function updateProgress() {
+            const totalQuestions = document.querySelectorAll('.question-card').length;
+            const answeredQuestions = document.querySelectorAll('.question-card input[type="radio"]:checked').length;
+            progressText.textContent = `${answeredQuestions}/${totalQuestions} answered`;
+        }
+
+        // Update progress when answers change
+        document.querySelectorAll('#questionsSection input[type="radio"]').forEach(el => {
+            el.addEventListener('change', updateProgress);
+        });
+
+        // Initial progress update
+        updateProgress();
+
+        // Prevent accidental navigation
+        window.addEventListener('beforeunload', function(e) {
+            if (!warningShown) { // Only show warning if exam isn't almost done
+                e.preventDefault();
+                e.returnValue = 'Are you sure you want to leave? Your exam progress may be lost.';
+                return e.returnValue;
+            }
+        });
+    });
+</script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 {% endblock %}
