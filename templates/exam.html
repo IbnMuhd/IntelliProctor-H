@@ -40,23 +40,31 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.disabled = true;
             spinner.style.display = 'inline-block';
             msg.textContent = '';
-            fetch('/start_exam').then(res => res.json()).then(data => {
-                spinner.style.display = 'none';
-                if(data.status === 'success' && data.redirect) {
-                    msg.style.color = '#28a745';
-                    msg.textContent = 'Exam started! Redirecting...';
-                    setTimeout(() => { window.location.href = data.redirect; }, 1000);
-                } else {
+            fetch('/start_exam', {method: 'POST'})
+                .then(async res => {
+                    spinner.style.display = 'none';
+                    let data;
+                    try {
+                        data = await res.json();
+                    } catch (e) {
+                        data = {};
+                    }
+                    if(res.ok && data.status === 'success' && data.redirect) {
+                        msg.style.color = '#28a745';
+                        msg.textContent = 'Exam started! Redirecting...';
+                        setTimeout(() => { window.location.href = data.redirect; }, 1000);
+                    } else {
+                        btn.disabled = false;
+                        msg.style.color = '#d9534f';
+                        msg.textContent = (data && data.message) ? data.message : ('Failed to start exam.' + (res.status ? ' (Error ' + res.status + ')' : ''));
+                    }
+                })
+                .catch(err => {
+                    spinner.style.display = 'none';
                     btn.disabled = false;
                     msg.style.color = '#d9534f';
-                    msg.textContent = data.message || 'Failed to start exam.';
-                }
-            }).catch(err => {
-                spinner.style.display = 'none';
-                btn.disabled = false;
-                msg.style.color = '#d9534f';
-                msg.textContent = 'Network error. Please try again.';
-            });
+                    msg.textContent = 'Network error. Please try again.';
+                });
         });
     }
 });

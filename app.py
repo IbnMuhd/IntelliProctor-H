@@ -18,7 +18,7 @@ from werkzeug.security import check_password_hash
 import logging
 from datetime import datetime
 import uuid
-from flask_wtf import CSRFProtect
+## from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
@@ -37,8 +37,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 if os.environ.get('FLASK_ENV') == 'production' or os.environ.get('EXAMGUARD_USE_HTTPS') == '1':
     app.config['SESSION_COOKIE_SECURE'] = True
 
-# Initialize CSRF protection
-csrf = CSRFProtect(app)
+
 
 # Initialize rate limiting
 limiter = Limiter(
@@ -597,7 +596,6 @@ def screen_activity():
     return jsonify({"status": ""})
 
 # --- Authentication routes ---
-@csrf.exempt
 @limiter.limit("5 per minute")
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -663,7 +661,6 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-@csrf.exempt
 @limiter.limit("5 per minute")
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -676,9 +673,9 @@ def register():
         role = request.form['role']
         face_image_b64 = request.form.get('face_image')
         admin_code = request.form.get('admin_code', '')
-        # Only allow admin registration if correct code is provided
         admin_secret = os.environ.get("EXAMGUARD_ADMIN_CODE", "asz62656453#")
-        if admin_code != admin_secret:
+        # Only require admin code if registering as admin
+        if role == 'admin' and admin_code != admin_secret:
             return render_template('register.html', error="Invalid admin registration code.")
         if face_image_b64:
             if ',' in face_image_b64:
