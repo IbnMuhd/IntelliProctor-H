@@ -21,6 +21,8 @@ import uuid
 ## from flask_wtf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.security import generate_password_hash
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -50,14 +52,11 @@ limiter = Limiter(
 # Database configuration
 DATABASE = "proctoring.db"
 
-
-# Define get_db before any function that uses it
 def get_db():
     conn = sqlite3.connect(DATABASE)
     conn.row_factory = sqlite3.Row
     return conn
 
-# Ensure exams table exists
 def ensure_exams_table():
     conn = get_db()
     c = conn.cursor()
@@ -68,12 +67,12 @@ def ensure_exams_table():
     )''')
     conn.commit()
     conn.close()
-ensure_exams_table()
 
 def init_db():
     conn = get_db()
     c = conn.cursor()
-    # Create tables if they do not exist
+
+    # USERS table
     c.execute('''CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY,
         username TEXT,
@@ -81,29 +80,72 @@ def init_db():
         role TEXT,
         face_embedding BLOB
     )''')
-    c.execute('''CREATE TABLE IF NOT EXISTS questions (id INTEGER PRIMARY KEY, question TEXT, option1 TEXT, option2 TEXT, option3 TEXT, option4 TEXT, answer TEXT)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS alerts (id INTEGER PRIMARY KEY, user TEXT, alert_type TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
-    # Add image_path column to alerts if missing
+
+    # QUESTIONS table
+    c.execute('''CREATE TABLE IF NOT EXISTS questions (
+        id INTEGER PRIMARY KEY,
+        question TEXT,
+        option1 TEXT,
+        option2 TEXT,
+        option3 TEXT,
+        option4 TEXT,
+        answer TEXT,
+        exam_id INTEGER,
+        FOREIGN KEY(exam_id) REFERENCES exams(id)
+    )''')
+    # Ensure exam_id column exists (for legacy DBs)
+    c.execute("PRAGMA table_info(questions)")
+    columns = [col[1] for col in c.fetchall()]
+    if 'exam_id' not in columns:
+        c.execute('ALTER TABLE questions ADD COLUMN exam_id INTEGER')
+
+    # ALERTS table
+    c.execute('''CREATE TABLE IF NOT EXISTS alerts (
+        id INTEGER PRIMARY KEY,
+        user TEXT,
+        alert_type TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # Add image_path column if missing
     try:
         c.execute('SELECT image_path FROM alerts LIMIT 1')
     except sqlite3.OperationalError:
         c.execute('ALTER TABLE alerts ADD COLUMN image_path TEXT')
-    c.execute('''CREATE TABLE IF NOT EXISTS exam_settings (id INTEGER PRIMARY KEY, duration_minutes INTEGER)''')
-    c.execute('''CREATE TABLE IF NOT EXISTS results (id INTEGER PRIMARY KEY, username TEXT, score INTEGER, total INTEGER, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)''')
+
+    # EXAM SETTINGS table
+    c.execute('''CREATE TABLE IF NOT EXISTS exam_settings (
+        id INTEGER PRIMARY KEY,
+        duration_minutes INTEGER
+    )''')
+
+    # RESULTS table
+    c.execute('''CREATE TABLE IF NOT EXISTS results (
+        id INTEGER PRIMARY KEY,
+        username TEXT,
+        score INTEGER,
+        total INTEGER,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )''')
+
+    # INTEGRITY THRESHOLDS table
     c.execute('''CREATE TABLE IF NOT EXISTS integrity_thresholds (
         alert_type TEXT PRIMARY KEY,
         threshold INTEGER
     )''')
-    # Add default admin if not exists
-    from werkzeug.security import generate_password_hash
+
+    # Insert default admin user if not exists
     c.execute("SELECT * FROM users WHERE username = 'admin'")
     if not c.fetchone():
-        c.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", ("admin", generate_password_hash("adminpass"), "admin"))
-    # Add default exam duration if not exists
+        c.execute("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)",
+                  ("admin", generate_password_hash("adminpass"), "admin"))
+
+    # Insert default exam duration
     c.execute('SELECT * FROM exam_settings WHERE id = 1')
     if not c.fetchone():
         c.execute("INSERT INTO exam_settings (id, duration_minutes) VALUES (1, 30)")
-    # Insert default thresholds if not present
+
+    # Insert default thresholds
     default_thresholds = {
         'face_mismatch': 1,
         'multiple_faces': 2,
@@ -113,9 +155,12 @@ def init_db():
     }
     for k, v in default_thresholds.items():
         c.execute('INSERT OR IGNORE INTO integrity_thresholds (alert_type, threshold) VALUES (?, ?)', (k, v))
+
     conn.commit()
     conn.close()
 
+# Run setup
+ensure_exams_table()
 init_db()
 
 
@@ -358,9 +403,18 @@ def add_question():
     conn.execute('''INSERT INTO questions (exam_id, question, option1, option2, option3, option4, answer)
                    VALUES (?, ?, ?, ?, ?, ?, ?)''', (exam_id, question, *options, answer))
     conn.commit()
+    # Fetch the just-added question for preview
+    q = conn.execute('''SELECT question, option1, option2, option3, option4, answer FROM questions WHERE rowid = last_insert_rowid()''').fetchone()
     conn.close()
+    preview = None
+    if q:
+        preview = {
+            'question': q[0],
+            'options': ', '.join([q[1], q[2], q[3], q[4]]),
+            'answer': q[5]
+        }
     flash('Question added successfully!', 'success')
-    return redirect(url_for('admin'))
+    return render_template('admin.html', exams=[], selected_exam_id=exam_id, questions=[preview] if preview else [], alerts=[], duration=30, results=[], thresholds={})
 
 # --- Bulk Upload Questions ---
 @app.route('/upload_questions', methods=['POST'])
@@ -378,17 +432,23 @@ def upload_questions():
     reader = csv.reader(stream)
     conn = get_db()
     count = 0
+    previews = []
     for row in reader:
         if len(row) != 6:
             continue
         question, option1, option2, option3, option4, answer = row
         conn.execute('''INSERT INTO questions (exam_id, question, option1, option2, option3, option4, answer)
                        VALUES (?, ?, ?, ?, ?, ?, ?)''', (exam_id, question, option1, option2, option3, option4, answer))
+        previews.append({
+            'question': question,
+            'options': ', '.join([option1, option2, option3, option4]),
+            'answer': answer
+        })
         count += 1
     conn.commit()
     conn.close()
     flash(f'{count} questions uploaded successfully!', 'success')
-    return redirect(url_for('admin'))
+    return render_template('admin.html', exams=[], selected_exam_id=exam_id, questions=previews, alerts=[], duration=30, results=[], thresholds={})
 
 @app.route('/set_exam_duration', methods=['POST'])
 def set_exam_duration():
@@ -677,6 +737,8 @@ def register():
         # Only require admin code if registering as admin
         if role == 'admin' and admin_code != admin_secret:
             return render_template('register.html', error="Invalid admin registration code.")
+        if not username or not password:
+            return render_template('register.html', error="Username and password are required.")
         if face_image_b64:
             if ',' in face_image_b64:
                 face_image_b64 = face_image_b64.split(',')[1]
@@ -686,14 +748,30 @@ def register():
                 frame = np.array(img)
                 frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
                 result = face_auth.verify_face(frame)
-                if result['verified'] and 'encoding' in result:
-                    embedding_blob = result['encoding']
-                    if add_user_with_embedding(username, password, embedding_blob, role):
-                        return redirect(url_for('login'))
-                    else:
-                        return render_template('register.html', error="Username already exists.")
-                else:
-                    return render_template('register.html', error="Face not detected. Please try again.")
+                if not result['verified'] or 'encoding' not in result:
+                    return render_template('register.html', error="Face not detected or not verified. Please try again.")
+                embedding_blob = result['encoding']
+                # Try to add user
+                try:
+                    success = add_user_with_embedding(username, password, embedding_blob, role)
+                except Exception as db_exc:
+                    return render_template('register.html', error=f"Database error: {db_exc}")
+                if not success:
+                    return render_template('register.html', error="Username already exists.")
+                # Double-check user was stored
+                import sqlite3
+                try:
+                    conn = sqlite3.connect('proctoring.db')
+                    c = conn.cursor()
+                    c.execute('SELECT username, password_hash, face_embedding FROM users WHERE username = ?', (username,))
+                    row = c.fetchone()
+                    conn.close()
+                    if not row or not row[0] or not row[1] or not row[2]:
+                        return render_template('register.html', error="Registration failed: Data not saved correctly.")
+                except Exception as check_exc:
+                    return render_template('register.html', error=f"Verification error: {check_exc}")
+                flash('Registration successful! You can now log in.', 'success')
+                return redirect(url_for('login'))
             except Exception as e:
                 return render_template('register.html', error=f"Image decode error: {e}")
         else:

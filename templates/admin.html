@@ -360,6 +360,32 @@
   </nav>
   
   <main class="main-content">
+    {% if questions and questions|length > 0 and questions[0].answer is defined %}
+    <section class="admin-section" style="border:2px solid var(--primary-blue); background:var(--light-blue); margin-bottom:2rem;">
+      <h4 style="color:var(--primary-blue);margin-bottom:1rem;"><i class="fas fa-eye"></i> Preview of Uploaded Questions</h4>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Question</th>
+              <th>Options</th>
+              <th>Answer</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for q in questions %}
+            <tr style="background: #fff;">
+              <td style="font-weight:600; color:var(--primary-blue);">{{ q.question }}</td>
+              <td>{{ q.options }}</td>
+              <td class="text-success" style="font-weight:600; color:var(--success-green);">{{ q.answer }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:0.5rem; color:var(--text-light); font-size:0.95em;">This is a preview of the most recently uploaded or added questions.</div>
+    </section>
+    {% endif %}
     <div class="page-header">
       <h2>Admin Dashboard</h2>
       <div class="subtitle">Manage exams, questions, and proctoring settings</div>
