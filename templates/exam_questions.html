@@ -236,7 +236,7 @@
         </div>
     {% else %}
         <form id="examForm" method="post">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
             
             <div id="questionsSection">
                 {% for q in questions %}
@@ -271,7 +271,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Timer functionality
-        let duration = {{ remaining|default(duration|default(30)*60 }}; // seconds left
+        let duration = {{ remaining|default(duration|default(30)*60) }}; // seconds left
         const timerDisplay = document.getElementById('time-display');
         const progressText = document.getElementById('progress-text');
         const warningElement = document.getElementById('warning');
