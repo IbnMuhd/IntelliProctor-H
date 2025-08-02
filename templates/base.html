@@ -2,35 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}ExamGuard{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>{% block title %}IntelliProctor{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ now }}">
     <script>
       var userRole = "{{ session.get('role', '') }}";
+      var now = new Date().getTime(); // Cache buster
     </script>
-    <script src="{{ url_for('static', filename='script.js') }}"></script>
+    <style>
+      body {
+        position: relative;
+        background-image: url('/static/images/background-nigeria.png');
+        background-size: cover;
+        background-repeat: no-repeat;
+        background-position: center center;
+        /* Fallback */
+        background-color: #f0f2f5;
+      }
+      /* Overlay to reduce background image interference */
+      body::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(255,255,255,0.7);
+        z-index: 0;
+        pointer-events: none;
+      }
+      .main-container, nav, footer {
+        position: relative;
+        z-index: 1;
+      }
+      .logo {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        padding: 6px 18px;
+        display: flex;
+        align-items: center;
+        height: 100px;
+      }
+      .logo img {
+        height: 96px;
+        width: auto;
+        display: block;
+        filter: drop-shadow(0 2px 6px rgba(25,118,242,0.15));
+        transition: all 0.3s ease;
+      }
+      .logo img:hover {
+        transform: scale(1.05);
+      }
+    </style>
 </head>
 <body>
     <!-- Navigation Bar -->
     <nav>
-        <div class="logo">ExamGuard</div>
-        <div class="nav-links">
-            <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Home</a>
-            <a href="{{ url_for('index') }}#about">About</a>
-            <a href="{{ url_for('index') }}#contact">Contact</a>
-            {% if session.get('role') == 'admin' %}
-                <a href="{{ url_for('admin') }}" {% if request.endpoint == 'admin' %}class="active"{% endif %}>Admin</a>
-                <a href="{{ url_for('student') }}" {% if request.endpoint == 'student' %}class="active"{% endif %}>Student</a>
-                <a href="{{ url_for('alerts_page') }}" class="btn btn-login{% if request.endpoint == 'alerts_page' %} active-link{% endif %}">Proctoring Alerts</a>
-            {% elif session.get('role') == 'student' %}
-                <a href="{{ url_for('student') }}" {% if request.endpoint == 'student' %}class="active"{% endif %}>Student</a>
-            {% endif %}
-            {% if session.get('username') %}
-                <a href="{{ url_for('logout') }}" class="btn btn-register">Logout</a>
-            {% else %}
-                <a href="{{ url_for('login') }}" class="btn btn-login">Login</a>
-                <a href="{{ url_for('register') }}" class="btn btn-register">Register</a>
-            {% endif %}
+        <div class="logo">
+          <img src="{{ url_for('static', filename='images/logo2.png') }}?v={{ now }}" 
+               alt="IntelliProctor Logo" 
+               style="height:96px;"
+               onerror="this.onerror=null;this.src='/static/images/logo-fallback.png';">
         </div>
+        <!-- Rest of your nav code -->
     </nav>
     <main class="main-container">
         {% block content %}{% endblock %}

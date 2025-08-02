@@ -4,7 +4,6 @@ body {
     font-family: 'Segoe UI', Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background: #fff;
     color: #333;
 }
 .main-container {
@@ -34,11 +33,7 @@ nav {
     color: #fff;
     letter-spacing: 1px;
 }
-.logo::before {
-    content: "♦";
-    margin-right: 6px;
-    color: #fff;
-}
+
 .nav-links {
     display: flex;
     gap: 20px;
