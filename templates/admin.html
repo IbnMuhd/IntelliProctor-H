@@ -360,6 +360,46 @@
   </nav>
   
   <main class="main-content">
+    <!-- Dedicated Results Section -->
+    <section class="admin-section" style="margin-bottom:2rem;">
+      <h3><i class="fas fa-chart-bar"></i> Student Results & Integrity</h3>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Score</th>
+              <th>Total</th>
+              <th>Integrity Score</th>
+              <th>Risk Level</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for r in results %}
+            <tr>
+              <td>{{ r.username }}</td>
+              <td>{{ r.score }}</td>
+              <td>{{ r.total }}</td>
+              <td>{{ r.integrity_score if r.integrity_score is not none else 'N/A' }}</td>
+              <td>
+                {% if r.integrity_risk == 'Low Risk' %}
+                  <span class="badge badge-success">Low Risk</span>
+                {% elif r.integrity_risk == 'Medium Risk' %}
+                  <span class="badge badge-warning">Medium Risk</span>
+                {% elif r.integrity_risk == 'High Risk' %}
+                  <span class="badge badge-danger">High Risk</span>
+                {% else %}
+                  <span class="badge">N/A</span>
+                {% endif %}
+              </td>
+              <td>{{ r.timestamp }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
     {% if questions and questions|length > 0 and questions[0].answer is defined %}
     <section class="admin-section" style="border:2px solid var(--primary-blue); background:var(--light-blue); margin-bottom:2rem;">
       <h4 style="color:var(--primary-blue);margin-bottom:1rem;"><i class="fas fa-eye"></i> Preview of Uploaded Questions</h4>
@@ -406,6 +446,15 @@
         
         <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
           <i class="fas fa-plus"></i> Create Exam
+        </button>
+      </form>
+
+      <!-- Exam Duration Section -->
+      <form method="post" action="/set_exam_duration" class="form-group" style="margin-top:2rem;">
+        <label for="duration"><i class="fas fa-clock"></i> Exam Duration (minutes)</label>
+        <input type="number" name="duration" id="duration" class="form-control" min="1" value="{{ duration }}" required style="max-width: 200px;">
+        <button type="submit" class="btn btn-primary" style="margin-top: 1rem;">
+          <i class="fas fa-save"></i> Save Duration
         </button>
       </form>
       

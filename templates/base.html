@@ -9,16 +9,42 @@
       var now = new Date().getTime(); // Cache buster
     </script>
     <style>
+      :root {
+        --primary: #1976f2;
+        --primary-dark: #1153b5;
+        --secondary: #e3eafc;
+        --secondary-dark: #b6c8f9;
+        --text: #222;
+        --border-radius: 8px;
+        --transition: all 0.2s ease;
+      }
+      .card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 16px rgba(25,118,242,0.08);
+        padding: 2rem 1.5rem;
+        margin: 2rem auto;
+        max-width: 600px;
+        width: 100%;
+        transition: box-shadow 0.2s;
+      }
+      .card:hover {
+        box-shadow: 0 4px 24px rgba(25,118,242,0.15);
+      }
+      .nav-links a.active:not(.btn),
+      .nav-links a.active-link:not(.btn) {
+        color: #fff;
+        background: var(--primary);
+        box-shadow: 0 2px 8px rgba(25,118,242,0.12);
+      }
       body {
         position: relative;
         background-image: url('/static/images/background-nigeria.png');
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center center;
-        /* Fallback */
         background-color: #f0f2f5;
       }
-      /* Overlay to reduce background image interference */
       body::before {
         content: '';
         position: fixed;
@@ -34,24 +60,100 @@
         position: relative;
         z-index: 1;
       }
-      .logo {
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-        padding: 6px 18px;
+      nav {
+        min-height: 56px;
+        height: 60px;
         display: flex;
         align-items: center;
-        height: 100px;
+        background: rgba(25, 57, 242, 0.15); /* semi-transparent blue */
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0 0.5rem;
+      }
+      .logo {
+        display: flex;
+        align-items: center;
+        height: 56px;
+        background: transparent;
+        box-shadow: none;
+        border-radius: 0;
+        padding: 0;
       }
       .logo img {
-        height: 96px;
+        height: 48px;
         width: auto;
         display: block;
-        filter: drop-shadow(0 2px 6px rgba(25,118,242,0.15));
+        filter:
+          drop-shadow(0 2px 6px rgba(25,118,242,0.15))
+          brightness(0) saturate(100%) invert(32%) sepia(98%) saturate(1200%) hue-rotate(190deg) brightness(1.1);
         transition: all 0.3s ease;
       }
       .logo img:hover {
         transform: scale(1.05);
+      }
+      .nav-links {
+        display: flex;
+        gap: 1.2rem;
+        align-items: center;
+        margin-left: 1.5rem;
+        height: 56px;
+      }
+      .nav-links a {
+        text-decoration: none;
+        color: var(--primary);
+        font-weight: 500;
+        transition: var(--transition);
+        padding: 0.3rem 0.8rem;
+        position: relative;
+        border-radius: 6px;
+      }
+      .nav-links a:not(.btn):hover {
+        color: #fff;
+        background: var(--primary);
+        box-shadow: 0 2px 8px rgba(25,118,242,0.12);
+      }
+      .nav-links a:not(.btn)::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 0;
+        height: 4px;
+        background-color: var(--primary);
+        border-radius: 2px;
+        transition: var(--transition);
+      }
+      .nav-links a:not(.btn):hover::after {
+        width: 100%;
+      }
+      .btn {
+        padding: 0.75rem 1.5rem;
+        border-radius: var(--border-radius);
+        font-weight: 600;
+        text-decoration: none;
+        transition: var(--transition);
+        display: inline-block;
+        text-align: center;
+        cursor: pointer;
+        border: none;
+        font-size: 0.95rem;
+      }
+      .btn-login {
+        background-color: var(--primary);
+        color: white;
+      }
+      .btn-login:hover {
+        background-color: var(--primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(25, 118, 242, 0.2);
+      }
+      .btn-register {
+        background-color: var(--secondary);
+        color: var(--text);
+      }
+      .btn-register:hover {
+        background-color: var(--secondary-dark);
+        transform: translateY(-2px);
       }
     </style>
 </head>
@@ -64,7 +166,24 @@
                style="height:96px;"
                onerror="this.onerror=null;this.src='/static/images/logo-fallback.png';">
         </div>
-        <!-- Rest of your nav code -->
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" {% if request.endpoint == 'index' %}class="active"{% endif %}>Home</a>
+            <a href="{{ url_for('index') }}#about">About</a>
+            <a href="{{ url_for('index') }}#contact">Contact</a>
+            {% if session.get('role') == 'admin' %}
+                <a href="{{ url_for('admin') }}" {% if request.endpoint == 'admin' %}class="active"{% endif %}>Admin</a>
+                <a href="{{ url_for('student') }}" {% if request.endpoint == 'student' %}class="active"{% endif %}>Student</a>
+                <a href="{{ url_for('alerts_page') }}" class="btn btn-login{% if request.endpoint == 'alerts_page' %} active-link{% endif %}">Proctoring Alerts</a>
+            {% elif session.get('role') == 'student' %}
+                <a href="{{ url_for('student') }}" {% if request.endpoint == 'student' %}class="active"{% endif %}>Student</a>
+            {% endif %}
+            {% if session.get('username') %}
+                <a href="{{ url_for('logout') }}" class="btn btn-register">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-login">Login</a>
+                <a href="{{ url_for('register') }}" class="btn btn-register">Register</a>
+            {% endif %}
+        </div>
     </nav>
     <main class="main-container">
         {% block content %}{% endblock %}

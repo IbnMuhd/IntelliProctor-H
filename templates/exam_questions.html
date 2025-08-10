@@ -244,7 +244,7 @@
                     <div class="question-text">Q{{ loop.index }}. {{ q.question }}</div>
                     {% for opt in [q.option1, q.option2, q.option3, q.option4] %}
                     <label class="option-label">
-                        <input type="radio" name="q{{ loop.index0 }}" value="{{ opt }}" required>
+                        <input type="radio" name="q{{ loop.index0 }}" value="{{ opt }}" {% if loop.first %}required{% endif %}>
                         {{ opt }}
                     </label>
                     {% endfor %}

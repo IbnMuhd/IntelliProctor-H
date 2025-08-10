@@ -1,3 +1,39 @@
+# --- Advanced integrity score calculation (post-exam analysis) ---
+def calculate_integrity_score(
+    face_visible_time: float,  # percentage (0-100)
+    multiple_faces_detected: int,
+    noise_level: float,  # average dB
+    tab_switch_count: int,
+    phone_detected: bool,
+    suspicious_object_detected: bool
+) -> tuple:
+    score = 100.0
+    # Deduct for face not visible enough
+    if face_visible_time < 90:
+        score -= (90 - face_visible_time) * 0.5
+    # Deduct for multiple faces
+    score -= multiple_faces_detected * 2
+    # Deduct for noise
+    if noise_level > 60:
+        score -= 5
+    # Deduct for tab switches
+    score -= tab_switch_count * 3
+    # Deduct for phone
+    if phone_detected:
+        score -= 20
+    # Deduct for suspicious object
+    if suspicious_object_detected:
+        score -= 15
+    # Clamp score
+    score = max(0, min(100, score))
+    # Risk level
+    if score >= 80:
+        risk = "Low Risk"
+    elif score >= 50:
+        risk = "Medium Risk"
+    else:
+        risk = "High Risk"
+    return score, risk
 from flask import Flask, render_template, Response, jsonify, request, redirect, url_for, session, flash
 from src.utils.db import add_user_with_embedding, get_face_embedding
 from src.auth.face_auth import FaceAuthenticator
@@ -125,8 +161,14 @@ def init_db():
         username TEXT,
         score INTEGER,
         total INTEGER,
+        integrity_score INTEGER,
         timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
     )''')
+    # Add integrity_score column if missing (for legacy DBs)
+    c.execute("PRAGMA table_info(results)")
+    results_columns = [col[1] for col in c.fetchall()]
+    if 'integrity_score' not in results_columns:
+        c.execute('ALTER TABLE results ADD COLUMN integrity_score INTEGER')
 
     # INTEGRITY THRESHOLDS table
     c.execute('''CREATE TABLE IF NOT EXISTS integrity_thresholds (
@@ -164,6 +206,7 @@ ensure_exams_table()
 init_db()
 
 
+
 # Global objects
 camera = None
 face_auth = FaceAuthenticator()  # Initialize once
@@ -171,6 +214,9 @@ behavior_monitor = None  # Will be initialized once below
 frame_queue = queue.Queue(maxsize=10)
 audio_alert = False
 registered_face_embedding = None
+
+# --- Per-student metrics for integrity score ---
+METRICS = {}  # {username: {face_visible_time, multiple_faces_detected, noise_level, tab_switch_count, phone_detected, suspicious_object_detected}}
 
 # Initialize BehaviorMonitor once, embedding will be set per student
 try:
@@ -255,25 +301,43 @@ def process_frame(user=None, role=None):
     global registered_face_embedding
     frame_count = 0
     last_check = 0
-    check_interval = 0.5  # seconds between heavy checks
+    check_interval = 1.0  # seconds between heavy checks (was 0.5)
+    heavy_check_every_n_frames = 5  # Only run heavy checks every N frames
+    # --- METRICS INIT ---
+    if user and user not in METRICS:
+        METRICS[user] = {
+            'face_visible_frames': 0,
+            'total_frames': 0,
+            'multiple_faces_detected': 0,
+            'tab_switch_count': 0,
+            'phone_detected': False,
+            'suspicious_object_detected': False,
+            'noise_samples': [],
+        }
     while True:
         if camera:
             # Only run proctoring for students
             if role == 'admin':
-                time.sleep(0.01)
+                time.sleep(0.05)
                 continue
             frame = camera.get_frame()
             if frame is not None:
                 # --- Optimization: Lower resolution for proctoring ---
-                frame = cv2.resize(frame, (320, 240))
+                frame = cv2.resize(frame, (160, 120))  # Lowered from 320x240 for speed
                 frame_count += 1
                 now = time.time()
-                # --- Optimization: Only run heavy checks every 0.5s ---
-                if now - last_check > check_interval:
+                # --- METRICS: Count total frames ---
+                if user in METRICS:
+                    METRICS[user]['total_frames'] += 1
+                # --- Only run heavy checks every N frames and every check_interval seconds ---
+                if frame_count % heavy_check_every_n_frames == 0 and (now - last_check > check_interval):
                     last_check = now
                     # Continuous face verification during exam
                     if registered_face_embedding is not None:
                         result = face_auth.verify_face(frame, registered_face_embedding)
+                        if result.get('face_detected', False):
+                            if user in METRICS:
+                                METRICS[user]['face_visible_frames'] += 1
                         if not result['verified']:
                             if increment_violation(user or 'unknown', 'face_mismatch'):
                                 add_alert(user or 'unknown', 'face_mismatch', frame=frame)
@@ -285,14 +349,22 @@ def process_frame(user=None, role=None):
                             if triggered:
                                 if increment_violation(user or 'unknown', event):
                                     add_alert(user or 'unknown', event, frame=frame)
+                        # --- METRICS: Multiple faces, phone, suspicious object ---
+                        if user in METRICS:
+                            if behavior_results.get('multiple_faces'):
+                                METRICS[user]['multiple_faces_detected'] += 1
+                            if behavior_results.get('phone_detected'):
+                                METRICS[user]['phone_detected'] = True
+                            if behavior_results.get('suspicious_object_detected'):
+                                METRICS[user]['suspicious_object_detected'] = True
                 # --- Always update the video feed for smoothness ---
                 if not frame_queue.full():
                     frame_queue.put(frame)
-                time.sleep(0.01)  # Small sleep for CPU balance
+                time.sleep(0.03)  # Slightly longer sleep for CPU balance
             else:
-                time.sleep(0.01)
+                time.sleep(0.03)
         else:
-            time.sleep(0.01)
+            time.sleep(0.05)
 
 def generate_frames():
     while True:
@@ -315,6 +387,8 @@ def monitor_audio(user=None, role=None, threshold=0.02, duration=1, samplerate=1
             continue
         def callback(indata, frames, _time, status):
             volume_norm = np.linalg.norm(indata) / frames
+            if user in METRICS:
+                METRICS[user].setdefault('noise_samples', []).append(volume_norm)
             if volume_norm > threshold:
                 ALERTS.append({"type": "audio", "time": time.time()})
                 audio_alert = True
@@ -352,13 +426,27 @@ def admin():
     duration = conn.execute('SELECT duration_minutes FROM exam_settings WHERE id = 1').fetchone()
     results = conn.execute('SELECT * FROM results ORDER BY timestamp DESC LIMIT 20').fetchall()
     conn.close()
+    # Add integrity_risk label to each result
+    results_with_risk = []
+    for r in results:
+        score = r['integrity_score'] if 'integrity_score' in r.keys() else None
+        if score is not None:
+            if score >= 80:
+                risk = "Low Risk"
+            elif score >= 50:
+                risk = "Medium Risk"
+            else:
+                risk = "High Risk"
+        else:
+            risk = "N/A"
+        results_with_risk.append({**dict(r), 'integrity_risk': risk})
     # Format options for display
     questions_fmt = []
     for q in questions:
         options = ', '.join([q['option1'], q['option2'], q['option3'], q['option4']])
         questions_fmt.append({'question': q['question'], 'options': options})
     thresholds = dict(INTEGRITY_THRESHOLDS)
-    return render_template('admin.html', exams=exams, selected_exam_id=selected_exam_id, questions=questions_fmt, alerts=alerts, duration=duration[0] if duration else 30, results=results, thresholds=thresholds)
+    return render_template('admin.html', exams=exams, selected_exam_id=selected_exam_id, questions=questions_fmt, alerts=alerts, duration=duration[0] if duration else 30, results=results_with_risk, thresholds=thresholds)
 
 # --- Create Exam ---
 @app.route('/create_exam', methods=['POST'])
@@ -448,7 +536,7 @@ def upload_questions():
     conn.commit()
     conn.close()
     flash(f'{count} questions uploaded successfully!', 'success')
-    return render_template('admin.html', exams=[], selected_exam_id=exam_id, questions=previews, alerts=[], duration=30, results=[], thresholds={})
+    return redirect(url_for('admin', exam_id=exam_id))
 
 @app.route('/set_exam_duration', methods=['POST'])
 def set_exam_duration():
@@ -616,12 +704,46 @@ def exam_questions():
             if q_key in answers and answers[q_key] == q['answer']:
                 score += 1
         total = len(questions)
-        # Save result to DB
-        conn.execute('INSERT INTO results (username, score, total) VALUES (?, ?, ?)', (session['username'], score, total))
+
+        # --- INTEGRITY SCORE (real metrics) ---
+        username = session.get('username')
+        metrics = METRICS.get(username, {})
+        # Face visible time
+        total_frames = metrics.get('total_frames', 0)
+        face_visible_frames = metrics.get('face_visible_frames', 0)
+        face_visible_time = (face_visible_frames / total_frames * 100) if total_frames > 0 else 0.0
+        # Multiple faces
+        multiple_faces_detected = metrics.get('multiple_faces_detected', 0)
+        # Noise level (convert norm to dB scale for display, but keep as norm for scoring)
+        noise_samples = metrics.get('noise_samples', [])
+        noise_level = float(np.mean(noise_samples)) if noise_samples else 0.0
+        # Tab switches
+        tab_switch_count = metrics.get('tab_switch_count', 0)
+        # Phone detected
+        phone_detected = metrics.get('phone_detected', False)
+        # Suspicious object detected
+        suspicious_object_detected = metrics.get('suspicious_object_detected', False)
+
+        integrity_score, integrity_risk = calculate_integrity_score(
+            face_visible_time,
+            multiple_faces_detected,
+            noise_level,
+            tab_switch_count,
+            phone_detected,
+            suspicious_object_detected
+        )
+
+        # Save result to DB (with integrity_score)
+        conn.execute('INSERT INTO results (username, score, total, integrity_score) VALUES (?, ?, ?, ?)',
+                     (session['username'], score, total, integrity_score))
         conn.commit()
         conn.close()
         session.pop('current_exam_page', None)  # Remove marker after submission
         reset_violations(session.get('username'))  # Reset violation counts after exam
+        # Clean up metrics for this user
+        if username in METRICS:
+            del METRICS[username]
+        # Do NOT show integrity_score/risk to student here
         return render_template('exam_questions.html', questions=questions, score=score, total=total, submitted=True, duration=duration)
     questions = conn.execute("SELECT * FROM questions").fetchall()
     conn.close()
@@ -646,13 +768,17 @@ def screen_activity():
         return jsonify({"status": "ignored"}), 200
     data = request.get_json()
     ALERTS.append({"type": "screen_activity", "event": data.get("event"), "time": time.time()})
+    # Track tab switches
+    username = session.get('username', 'unknown')
+    if username in METRICS and data.get("event") == "You have left the exam screen!":
+        METRICS[username]['tab_switch_count'] = METRICS[username].get('tab_switch_count', 0) + 1
     # Only log the alert if not 'You have left the exam screen!' or if user is not admin
     if data.get("event") == "You have left the exam screen!":
         # Do not log this for admin or anywhere else
         pass
     else:
-        if increment_violation(session.get('username', 'unknown'), 'screen_activity'):
-            add_alert(session.get('username', 'unknown'), 'screen_activity')
+        if increment_violation(username, 'screen_activity'):
+            add_alert(username, 'screen_activity')
     return jsonify({"status": ""})
 
 # --- Authentication routes ---
