@@ -207,23 +207,23 @@ init_db()
 
 
 
-# Global objects
+
+
+# Global objects: load all heavy models ONCE at startup
 camera = None
-face_auth = FaceAuthenticator()  # Initialize once
-behavior_monitor = None  # Will be initialized once below
+face_auth = FaceAuthenticator()  # Load face model once
+try:
+    from src.monitoring.behavior_monitor import BehaviorMonitor
+    behavior_monitor = BehaviorMonitor(None)  # Load behavior model once
+except Exception as e:
+    import traceback
+    print('Error initializing BehaviorMonitor at startup:', traceback.format_exc())
 frame_queue = queue.Queue(maxsize=10)
 audio_alert = False
 registered_face_embedding = None
 
 # --- Per-student metrics for integrity score ---
 METRICS = {}  # {username: {face_visible_time, multiple_faces_detected, noise_level, tab_switch_count, phone_detected, suspicious_object_detected}}
-
-# Initialize BehaviorMonitor once, embedding will be set per student
-try:
-    behavior_monitor = BehaviorMonitor(None)
-except Exception as e:
-    import traceback
-    print('Error initializing BehaviorMonitor at startup:', traceback.format_exc())
 
 # In-memory storage for demo
 QUESTIONS = []
@@ -274,17 +274,17 @@ def initialize_system(registered_embedding=None):
     try:
         if camera is None:
             camera = Camera()
+        # Fast camera warm-up: try to get a valid frame up to 3 times, fail fast
         frame = None
-        # Warm up the camera: try to get a valid frame up to 10 times
-        for _ in range(10):
+        for _ in range(3):
             frame = camera.get_frame()
             if frame is not None:
                 break
-            time.sleep(0.1)
+            time.sleep(0.05)
         if frame is None:
             # Camera could not be accessed or no frames available
             return jsonify({"status": "error", "message": "Camera access denied or not available. Please check your webcam connection and permissions."}), 500
-        # Set embedding for this session
+        # Set embedding for this session (do NOT reload models)
         if registered_embedding is not None:
             registered_face_embedding = registered_embedding
             # Update embedding in behavior_monitor if method exists
@@ -301,8 +301,8 @@ def process_frame(user=None, role=None):
     global registered_face_embedding
     frame_count = 0
     last_check = 0
-    check_interval = 1.0  # seconds between heavy checks (was 0.5)
-    heavy_check_every_n_frames = 5  # Only run heavy checks every N frames
+    check_interval = 2.0  # Increased: seconds between heavy checks
+    heavy_check_every_n_frames = 10  # Increased: Only run heavy checks every 10 frames
     # --- METRICS INIT ---
     if user and user not in METRICS:
         METRICS[user] = {
@@ -315,6 +315,10 @@ def process_frame(user=None, role=None):
             'noise_samples': [],
         }
     while True:
+        # Only run proctoring if global flag is set for this user
+        if not PROCTORING_ACTIVE.get(user, False):
+            time.sleep(0.1)
+            continue
         if camera:
             # Only run proctoring for students
             if role == 'admin':
@@ -360,11 +364,12 @@ def process_frame(user=None, role=None):
                 # --- Always update the video feed for smoothness ---
                 if not frame_queue.full():
                     frame_queue.put(frame)
-                time.sleep(0.03)  # Slightly longer sleep for CPU balance
+                # If queue is full, skip adding new frames (drop this frame)
+                time.sleep(0.07)  # Increased sleep for less CPU usage
             else:
-                time.sleep(0.03)
+                time.sleep(0.07)
         else:
-            time.sleep(0.05)
+            time.sleep(0.07)
 
 def generate_frames():
     while True:
@@ -381,8 +386,8 @@ def monitor_audio(user=None, role=None, threshold=0.02, duration=1, samplerate=1
     global audio_alert
     import time
     while True:
-        # Only run audio proctoring for students
-        if role == 'admin':
+        # Only run audio proctoring for students and when proctoring is active
+        if role == 'admin' or not PROCTORING_ACTIVE.get(user, False):
             sd.sleep(int(duration * 1000))
             continue
         def callback(indata, frames, _time, status):
@@ -422,6 +427,7 @@ def admin():
     else:
         questions = []
     # Only show alerts for students (not admins) and exclude screen_activity and 'You have left the exam screen!'
+
     alerts = conn.execute("SELECT * FROM alerts WHERE user IN (SELECT username FROM users WHERE role = 'student') AND alert_type != 'screen_activity' AND alert_type != 'You have left the exam screen!' ORDER BY timestamp DESC LIMIT 20").fetchall()
     duration = conn.execute('SELECT duration_minutes FROM exam_settings WHERE id = 1').fetchone()
     results = conn.execute('SELECT * FROM results ORDER BY timestamp DESC LIMIT 20').fetchall()
@@ -648,6 +654,9 @@ def start_exam():
         if init_result is not None:
             return init_result
 
+        # --- Mark proctoring as active for this user (thread-safe) ---
+        PROCTORING_ACTIVE[username] = True
+
         # Capture username and role for threads
         user = username
         role = session.get('role')
@@ -666,15 +675,32 @@ def start_exam():
         import traceback
         print('Error in /start_exam:', traceback.format_exc())
         return jsonify({"status": "error", "message": str(e)}), 500
+
 # --- Results Page ---
-@app.route('/results', methods=['GET'])
-def results():
-    if 'username' not in session:
+
+# --- Dedicated Results + Integrity Page for Admin ---
+@app.route('/results_page', methods=['GET'])
+def results_page():
+    if 'username' not in session or session.get('role') != 'admin':
         return redirect(url_for('login'))
     conn = get_db()
     results = conn.execute('SELECT * FROM results ORDER BY timestamp DESC LIMIT 50').fetchall()
     conn.close()
-    return render_template('results_page.html', results=results)
+    # Add integrity_risk label to each result
+    results_with_risk = []
+    for r in results:
+        score = r['integrity_score'] if 'integrity_score' in r.keys() else None
+        if score is not None:
+            if score >= 80:
+                risk = "Low Risk"
+            elif score >= 50:
+                risk = "Medium Risk"
+            else:
+                risk = "High Risk"
+        else:
+            risk = "N/A"
+        results_with_risk.append({**dict(r), 'integrity_risk': risk})
+    return render_template('results_page.html', results=results_with_risk)
 
 @app.route('/exam', methods=['GET', 'POST'])
 def exam():
@@ -739,6 +765,7 @@ def exam_questions():
         conn.commit()
         conn.close()
         session.pop('current_exam_page', None)  # Remove marker after submission
+        PROCTORING_ACTIVE[username] = False  # Deactivate proctoring after exam
         reset_violations(session.get('username'))  # Reset violation counts after exam
         # Clean up metrics for this user
         if username in METRICS:
@@ -760,9 +787,11 @@ def verify_identity():
 
 @app.route('/screen_activity', methods=['POST'])
 def screen_activity():
-    # Only log screen activity for students and only during the exam_questions page
+    # Only log screen activity for students and only during the exam_questions page and when proctoring is active
     if session.get('role') != 'student':
         return jsonify({"status": "forbidden"}), 403
+    if not PROCTORING_ACTIVE.get(session.get('username'), False):
+        return jsonify({"status": "inactive"}), 200
     # Only allow screen activity logging if the student is on the questions page
     if session.get('current_exam_page') != 'exam_questions':
         return jsonify({"status": "ignored"}), 200
@@ -950,6 +979,9 @@ def add_alert(user, alert_type, timestamp=None, frame=None):
     conn.execute("INSERT INTO alerts (user, alert_type, timestamp, image_path) VALUES (?, ?, ?, ?)", (user, alert_type, timestamp, image_path))
     conn.commit()
     conn.close()
+
+# --- Thread-safe proctoring state per user ---
+PROCTORING_ACTIVE = {}  # {username: True/False}
 
 if __name__ == '__main__':
     import os
