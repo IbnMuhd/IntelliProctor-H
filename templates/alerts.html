@@ -18,7 +18,13 @@
     <tbody id="alertsBody">
         {% for alert in alerts %}
         <tr data-id="{{ alert.id }}">
-            <td>{{ alert.timestamp }}</td>
+                        <td>
+                            {% if alert.timestamp %}
+                                {{ alert.timestamp | int | datetimeformat }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
             <td>{{ alert.user }}</td>
             <td>{{ alert.alert_type.replace('_', ' ').title() }}</td>
             <td>

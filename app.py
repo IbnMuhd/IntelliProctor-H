@@ -527,6 +527,10 @@ def upload_questions():
     conn = get_db()
     count = 0
     previews = []
+    def datetimeformat(value, format='%Y-%m-%d %H:%M:%S'):
+        return datetime.fromtimestamp(value).strftime(format)
+
+    app.jinja_env.filters['datetimeformat'] = datetimeformat
     for row in reader:
         if len(row) != 6:
             continue
@@ -885,13 +889,8 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        role = request.form['role']
         face_image_b64 = request.form.get('face_image')
-        admin_code = request.form.get('admin_code', '')
-        admin_secret = os.environ.get("EXAMGUARD_ADMIN_CODE", "asz62656453#")
-        # Only require admin code if registering as admin
-        if role == 'admin' and admin_code != admin_secret:
-            return render_template('register.html', error="Invalid admin registration code.")
+        role = 'student'  # Only allow student registration
         if not username or not password:
             return render_template('register.html', error="Username and password are required.")
         if face_image_b64:
@@ -958,9 +957,18 @@ def alerts_page():
     if 'username' not in session or session.get('role') != 'admin':
         return redirect(url_for('login'))
     conn = get_db()
-    alerts = conn.execute("SELECT * FROM alerts ORDER BY timestamp DESC").fetchall()
+    alerts = conn.execute("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT 100").fetchall()
     conn.close()
     return render_template('alerts.html', alerts=alerts)
+
+# Add Jinja2 filter for readable timestamps
+from datetime import datetime
+@app.template_filter('datetimeformat')
+def datetimeformat(value):
+    try:
+        return datetime.fromtimestamp(int(float(value))).strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        return str(value)
 
 def add_alert(user, alert_type, timestamp=None, frame=None):
     if timestamp is None:

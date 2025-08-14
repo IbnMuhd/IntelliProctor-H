@@ -266,15 +266,11 @@
             </div>
 
             <div class="form-group">
-                <label for="roleSelect">Account Type</label>
-                <select id="roleSelect" name="role" required>
-                    <option value="student">Student</option>
-                    <option value="admin">Administrator</option>
-                </select>
+                    <!-- Only student registration allowed -->
+                    <input type="hidden" name="role" value="student">
             </div>
 
-            <input type="hidden" name="face_image" id="face_image">
-            <input type="hidden" name="admin_code" id="admin_code">
+                <input type="hidden" name="face_image" id="face_image">
 
             <button type="submit" id="registerButton">
                 <i class="fas fa-user-plus"></i>
@@ -293,8 +289,7 @@
         const canvas = document.getElementById('canvas');
         const registerForm = document.getElementById('registerForm');
         const faceImageInput = document.getElementById('face_image');
-        const adminCodeInput = document.getElementById('admin_code');
-        const roleSelect = document.getElementById('roleSelect');
+    // No admin registration, so no role selection or admin code
         const confirmationMsg = document.getElementById('confirmationMsg');
         const registerButton = document.getElementById('registerButton');
 
@@ -321,11 +316,7 @@
         registerForm.addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            // Check for admin code if registering as admin
-            if (roleSelect.value === 'admin' && !adminCodeInput.value) {
-                alert('Admin registration requires a valid code');
-                return;
-            }
+            // Only student registration allowed
 
             // Show loading state
             registerButton.disabled = true;
@@ -348,19 +339,7 @@
             }, 500);
         });
 
-        // Handle role selection change
-        roleSelect.addEventListener('change', function() {
-            if (this.value === 'admin') {
-                const code = prompt('Please enter the administrator registration code:');
-                adminCodeInput.value = code || '';
-                
-                if (!adminCodeInput.value) {
-                    this.value = 'student'; // Revert to student if no code provided
-                }
-            } else {
-                adminCodeInput.value = '';
-            }
-        });
+    // No role selection or admin code for registration
 
         // Clean up camera stream when leaving page
         window.addEventListener('beforeunload', () => {

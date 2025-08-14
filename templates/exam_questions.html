@@ -284,6 +284,11 @@
         const timerInterval = setInterval(updateTimer, 1000);
         updateTimer(); // Initial call
 
+        // Stop timer if exam is submitted
+        {% if submitted %}
+        clearInterval(timerInterval);
+        {% endif %}
+
         function updateTimer() {
             const minutes = Math.floor(duration / 60);
             const seconds = duration % 60;
