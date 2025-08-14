@@ -34,11 +34,18 @@
   }
 </style>
 <div class="results-section">
-  <h2 style="margin-bottom:18px;">Student Results</h2>
+  <h2 style="margin-bottom:18px;">Student Results & Integrity</h2>
   <div style="overflow-x:auto;">
     <table class="results-table">
       <thead>
-        <tr><th>Student</th><th>Score</th><th>Total</th><th>Time</th></tr>
+        <tr>
+          <th>Student</th>
+          <th>Score</th>
+          <th>Total</th>
+          <th>Integrity Score (%)</th>
+          <th>Risk Level</th>
+          <th>Time</th>
+        </tr>
       </thead>
       <tbody>
       {% for r in results %}
@@ -46,6 +53,18 @@
           <td>{{ r.username }}</td>
           <td>{{ r.score }}</td>
           <td>{{ r.total }}</td>
+          <td>{{ r.integrity_score if r.integrity_score is not none else 'N/A' }}</td>
+          <td>
+            {% if r.integrity_risk == 'Low Risk' %}
+              <span class="badge badge-success">Low Risk</span>
+            {% elif r.integrity_risk == 'Medium Risk' %}
+              <span class="badge badge-warning">Medium Risk</span>
+            {% elif r.integrity_risk == 'High Risk' %}
+              <span class="badge badge-danger">High Risk</span>
+            {% else %}
+              <span class="badge">N/A</span>
+            {% endif %}
+          </td>
           <td>{{ r.timestamp }}</td>
         </tr>
       {% endfor %}

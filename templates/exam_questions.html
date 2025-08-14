@@ -240,11 +240,13 @@
             
             <div id="questionsSection">
                 {% for q in questions %}
+                {% set qidx = loop.index0 %}
                 <div class="question-card">
                     <div class="question-text">Q{{ loop.index }}. {{ q.question }}</div>
                     {% for opt in [q.option1, q.option2, q.option3, q.option4] %}
-                    <label class="option-label">
-                        <input type="radio" name="q{{ loop.index0 }}" value="{{ opt }}" {% if loop.first %}required{% endif %}>
+                    {% set opt_id = 'q' ~ qidx ~ '_opt' ~ loop.index0 %}
+                    <label class="option-label" for="{{ opt_id }}">
+                        <input type="radio" id="{{ opt_id }}" name="q{{ qidx }}" value="{{ opt }}" {% if loop.first %}required{% endif %}>
                         {{ opt }}
                     </label>
                     {% endfor %}
@@ -281,6 +283,11 @@
         // Update timer every second
         const timerInterval = setInterval(updateTimer, 1000);
         updateTimer(); // Initial call
+
+        // Stop timer if exam is submitted
+        {% if submitted %}
+        clearInterval(timerInterval);
+        {% endif %}
 
         function updateTimer() {
             const minutes = Math.floor(duration / 60);
